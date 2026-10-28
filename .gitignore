@@ -1,6 +1,6 @@
 # docker image (1.2GB) và kết quả chạy trên máy
 n8n-latest.tar
-output/
+facebook_output/
 tiktok_output/
 run/
 

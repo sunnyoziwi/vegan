@@ -14,8 +14,8 @@ services:
 
     volumes:
       - n8n_data:/home/node/.n8n
-      # ảnh .png + caption .txt xuất hiện ở thư mục ./output cạnh file này
-      - ./output:/files/output
+      # bài Facebook: ảnh .png + caption .txt xuất hiện ở thư mục ./facebook_output cạnh file này
+      - ./facebook_output:/files/output
       # bài TikTok: mỗi bài một thư mục (ảnh + caption.txt)
       - ./tiktok_output:/files/tiktok_output
     restart: unless-stopped
