@@ -45,6 +45,7 @@ n8n() {
     -e N8N_RESTRICT_FILE_ACCESS_TO="$OUT_DIR" \
     -e NODES_EXCLUDE='["n8n-nodes-base.localFileTrigger"]' \
     -e GENERIC_TIMEZONE=Asia/Ho_Chi_Minh \
+    -e N8N_RUNNERS_TASK_TIMEOUT=900 \
     -e TZ=Asia/Ho_Chi_Minh \
     "$N8N_IMAGE" "$@"
 }

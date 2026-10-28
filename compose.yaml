@@ -9,6 +9,8 @@ services:
       - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
       - TZ=Asia/Ho_Chi_Minh
       - N8N_SECURE_COOKIE=false
+      # Code node chọn bài + tải nhiều ảnh có thể chạy lâu (mặc định n8n ngắt sau 300s)
+      - N8N_RUNNERS_TASK_TIMEOUT=900
       # bật node "Execute Command" (n8n 2.x mặc định tắt) — workflow TikTok dùng để tạo thư mục cho từng bài
       - 'NODES_EXCLUDE=["n8n-nodes-base.localFileTrigger"]'
 
