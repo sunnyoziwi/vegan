@@ -1,0 +1,795 @@
+{
+  "name": "Vegan & Animal rights → TikTok photo posts (EN + VI)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Vegan & Animal rights → TikTok (ảnh trượt, 2 ngôn ngữ)\nMỗi lần chạy: đọc RSS tin tiếng Anh + tiếng Việt (vegan, quyền động vật) → chọn bài mới chưa làm → mở trang bài lấy nội dung + **nhiều ảnh** → Gemini kể lại câu chuyện thành 4–6 slide (vuốt để xem tiếp) bằng **tiếng Anh và tiếng Việt**, kèm caption + hashtag + tên quốc gia → ghép chữ lên ảnh 1080x1920.\n\n**Kết quả**: `tiktok_output/<ngày>_<tên-bài>_en/` và `…_vi/`, mỗi thư mục có `01.jpg, 02.jpg, …` + `caption.txt` (dòng đầu dạng `🇬🇧 UK: caption`).\n\n**Cài đặt**: compose.yaml mount `./tiktok_output:/files/tiktok_output`, `N8N_RESTRICT_FILE_ACCESS_TO=/files/output;/files/tiktok_output`, và bật node Execute Command (`NODES_EXCLUDE`) để tạo thư mục.\n**Tuỳ chỉnh** (node Config): `maxArticles` (số bài/lần, mỗi bài ra 2 post), `slidesMin/slidesMax`, `maxImagesPerPost`, `minRelevance` (Gemini chấm 0–10 độ đúng chủ đề vegan / quyền động vật; dưới mức này bài bị bỏ). Nguồn tin: node *RSS feed list*.",
+        "height": 420,
+        "width": 620,
+        "color": 5
+      },
+      "id": "cced5673-8a6b-4f68-afb3-d3f1bdc76d6c",
+      "name": "Hướng dẫn",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1ca6ce56-77b7-47c5-811e-f745c82e7dbb",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        160,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 15
+            }
+          ]
+        }
+      },
+      "id": "d0fd11da-0c16-4e84-a80c-c04fa5b6511a",
+      "name": "Every day 15:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "75106a2b-1212-43e2-8006-129b8e08e0c3",
+              "name": "geminiApiKey",
+              "value": "PASTE_IN_GITHUB_SECRETS",
+              "type": "string"
+            },
+            {
+              "id": "a606cf3b-3323-4318-86b5-5e6db4de86ef",
+              "name": "geminiBaseUrl",
+              "value": "https://generativelanguage.googleapis.com",
+              "type": "string"
+            },
+            {
+              "id": "9753469d-c332-4a6c-8c61-cc457473d124",
+              "name": "textModels",
+              "value": "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.6-flash",
+              "type": "string"
+            },
+            {
+              "id": "ed2827ed-c839-4a86-8940-9a428aa6a96d",
+              "name": "brandName",
+              "value": "VEGANISM",
+              "type": "string"
+            },
+            {
+              "id": "63412579-8f7a-4c3a-91da-473250cff7bd",
+              "name": "outputDir",
+              "value": "/files/tiktok_output",
+              "type": "string"
+            },
+            {
+              "id": "86f98a63-3ad4-46aa-aee5-4e9433fe7b8d",
+              "name": "maxArticles",
+              "value": 4,
+              "type": "number"
+            },
+            {
+              "id": "655bf6d2-094f-40e4-abc1-54823b1d182e",
+              "name": "maxAgeDays",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "7479f69a-a8b4-4dfc-a7ae-a0afad55b548",
+              "name": "maxImagesPerPost",
+              "value": 6,
+              "type": "number"
+            },
+            {
+              "id": "4d2f169d-0b60-466f-a0dc-3a1512b97740",
+              "name": "slidesMin",
+              "value": 4,
+              "type": "number"
+            },
+            {
+              "id": "02df4c6a-4489-43a9-8bd0-b8dee58b4150",
+              "name": "slidesMax",
+              "value": 6,
+              "type": "number"
+            },
+            {
+              "id": "6a70cb3b-d8f5-4a33-81ec-ee02c0efa7a4",
+              "name": "minRelevance",
+              "value": 7,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e51f831a-e96f-4cde-814c-4550785476ac",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ✏️ Nguồn RSS cho TikTok — chủ đề vegan & quyền động vật, tin tiếng Anh + tiếng Việt.\n//   lang    = ngôn ngữ của nguồn (en / vi). Mỗi bài luôn tạo 2 bản: tiếng Anh + tiếng Việt.\n//   count   = số bài lấy từ chủ đề này mỗi lần chạy.\n//   include = regex (tuỳ chọn); bài phải khớp (tiêu đề + tóm tắt) mới được lấy — dùng cho báo tổng hợp.\n//   colors  = màu nền dự phòng khi bài không có ảnh nào.\nconst EN_ANIMAL = 'vegan|plant-based|animal|sanctuary|wildlife|rescue';\nconst VI_ANIMAL = 'động vật|thú cưng|thịt chó|thịt mèo|\\\\bvoi\\\\b|\\\\bhổ\\\\b|\\\\bgấu\\\\b|tê tê|\\\\bkhỉ\\\\b|cá heo|\\\\brùa\\\\b|hoang dã|cứu hộ|nuôi nhốt|ngược đãi|giết mổ|lò mổ|thuần chay|ăn chay|món chay|đồ chay|sách đỏ|quý hiếm|ngà voi|sừng tê|mật gấu|buôn lậu động vật|thả về tự nhiên';\n\nconst TOPICS = [\n  {\n    id: 'vegan', lang: 'en', count: 1,\n    label: 'Vegan',\n    guide: 'Vegan lifestyle and plant-based news: warm, hopeful, practical.',\n    colors: ['#14532d', '#16a34a'],\n    feeds: [\n      { url: 'https://plantbasednews.org/feed/' },\n      { url: 'https://www.veganfoodandliving.com/feed/' },\n      { url: 'https://www.theguardian.com/lifeandstyle/veganism/rss' },\n    ],\n  },\n  {\n    id: 'animal-rights', lang: 'en', count: 1,\n    label: 'Animal rights',\n    guide: 'Animal-rights and animal-welfare news: honest but never graphic, compassionate, end with a constructive action.',\n    colors: ['#7f1d1d', '#dc2626'],\n    feeds: [\n      { url: 'https://sentientmedia.org/feed/' },\n      { url: 'https://mercyforanimals.org/feed/' },\n      { url: 'https://www.farmsanctuary.org/feed/' },\n      { url: 'https://animalequality.org/feed/' },\n      { url: 'https://www.goodnewsnetwork.org/feed/', include: EN_ANIMAL },\n    ],\n  },\n  {\n    id: 'dong-vat-vn', lang: 'vi', count: 2,\n    label: 'Động vật & ăn chay (tin Việt Nam)',\n    guide: 'Tin về bảo vệ động vật, động vật hoang dã, cứu hộ, ăn chay: nhẹ nhàng, nhân ái, không giật gân, không mô tả cảnh máu me.',\n    colors: ['#134e4a', '#14b8a6'],\n    feeds: [\n      { url: 'https://vnexpress.net/rss/thoi-su.rss', include: VI_ANIMAL },\n      { url: 'https://vnexpress.net/rss/the-gioi.rss', include: VI_ANIMAL },\n      { url: 'https://vnexpress.net/rss/khoa-hoc.rss', include: VI_ANIMAL },\n      { url: 'https://dantri.com.vn/rss/khoa-hoc.rss', include: VI_ANIMAL },\n      { url: 'https://dantri.com.vn/rss/home.rss', include: VI_ANIMAL },\n      { url: 'https://tuoitre.vn/rss/tin-moi-nhat.rss', include: VI_ANIMAL },\n      { url: 'https://thanhnien.vn/rss/home.rss', include: VI_ANIMAL },\n    ],\n  },\n];\n\nreturn TOPICS.flatMap((t) =>\n  t.feeds.map((f) => ({\n    json: { topic: t.id, label: t.label, guide: t.guide, colors: t.colors, lang: t.lang, count: t.count, url: f.url, include: f.include || '' },\n  })),\n);\n"
+      },
+      "id": "0591aa9d-064e-4327-b12f-5e214b7c5e17",
+      "name": "RSS feed list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Đọc tất cả feed song song, chọn bài MỚI NHẤT chưa đăng của mỗi chủ đề (xen kẽ chủ đề),\n// rồi mở trang bài để lấy nội dung + NHIỀU ảnh (mỗi slide TikTok một ảnh).\nconst cfg = $('Config').first().json;\nconst feeds = $input.all().map((i) => i.json);\nconst UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';\nconst MAX_AGE_MS = Number(cfg.maxAgeDays || 14) * 86400000;\nconst MAX_POSTS = Number(cfg.maxArticles || 4);\nconst MAX_IMAGES = Number(cfg.maxImagesPerPost || 6);\nconst now = Date.now();\n\nlet seen = {};\ntry { seen = $getWorkflowStaticData('global').seenTikTok || {}; } catch (e) { /* static data unavailable */ }\n\n// ---------- helpers ----------\nconst ENT = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…', ndash: '–', mdash: '—' };\nconst decode = (s) =>\n  String(s || '').replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (m, e) => {\n    if (e[0] === '#') {\n      const c = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);\n      try { return String.fromCodePoint(c); } catch (x) { return m; }\n    }\n    return ENT[e.toLowerCase()] ?? m;\n  });\nconst stripHtml = (h) =>\n  decode(String(h || '').replace(/<(script|style)[\\s\\S]*?<\\/\\1>/gi, ' ').replace(/<[^>]+>/g, ' ')).replace(/\\s+/g, ' ').trim();\nconst inner = (block, name) => {\n  const m = block.match(new RegExp('<' + name + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</' + name + '>', 'i'));\n  if (!m) return '';\n  const v = m[1].trim();\n  const cd = v.match(/^<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>$/);\n  return cd ? cd[1].trim() : decode(v);\n};\nconst attrs = (s) => {\n  const o = {};\n  for (const m of s.matchAll(/([\\w:-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')/g)) o[m[1].toLowerCase()] = decode(m[2] ?? m[3]);\n  return o;\n};\n// (sandbox của Code node không có global URL nên tự xử lý chuỗi)\nconst hostOf = (u) => { const m = String(u).match(/^https?:\\/\\/([^/?#:]+)/i); return m ? m[1].replace(/^www\\./i, '') : ''; };\nconst absUrl = (u, base) => {\n  u = String(u || '').trim();\n  if (/^https?:\\/\\//i.test(u)) return u;\n  const b = String(base || '');\n  const origin = (b.match(/^(https?:\\/\\/[^/?#]+)/i) || [])[1];\n  if (!origin) return '';\n  if (u.startsWith('//')) return 'https:' + u;\n  if (u.startsWith('/')) return origin + u;\n  return b.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + u;\n};\nconst BAD_IMG = /(gravatar|pixel|tracking|spacer|blank\\.|emoji|1x1|\\.gif(\\?|$)|\\.svg(\\?|$)|\\/logo|avatar|badge|favicon|doubleclick|feedburner)/i;\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst toBuf = (b) => {\n  if (Buffer.isBuffer(b)) return b;\n  if (b && b.type === 'Buffer' && Array.isArray(b.data)) return Buffer.from(b.data);\n  if (b instanceof ArrayBuffer) return Buffer.from(b);\n  if (b && b.buffer instanceof ArrayBuffer) return Buffer.from(b.buffer, b.byteOffset, b.byteLength);\n  return null;\n};\nconst sniff = (b) => {\n  if (!b || b.length < 12) return null;\n  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';\n  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';\n  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';\n  return null;\n};\nconst normKey = (link) => {\n  const [path, query = ''] = String(link).replace(/#.*$/, '').replace(/^https?:\\/\\/(www\\.)?/i, '').split('?');\n  const q = query.split('&').filter((p) => p && !/^(utm_|fbclid|ref=|source=|at_)/i.test(p)).join('&');\n  return (path.replace(/\\/+$/, '') + (q ? '?' + q : '')).toLowerCase();\n};\nconst titleKey = (t) => String(t).toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();\n\n// ---------- parse one feed ----------\nfunction parseFeed(xml, feed) {\n  const out = [];\n  for (const m of xml.matchAll(/<(item|entry)[\\s>][\\s\\S]*?<\\/\\1>/gi)) {\n    const block = m[0];\n    const title = stripHtml(inner(block, 'title'));\n    let link = stripHtml(inner(block, 'link'));\n    if (!link) {\n      const links = [...block.matchAll(/<link\\b([^>]*)\\/?>/gi)].map((x) => attrs(x[1]));\n      const alt = links.find((l) => l.href && (!l.rel || l.rel === 'alternate')) || links.find((l) => l.href);\n      link = alt ? alt.href : '';\n    }\n    if (!link) { const g = inner(block, 'guid'); if (/^https?:/i.test(g)) link = g; }\n    if (!title || !/^https?:/i.test(link)) continue;\n    const dateStr = inner(block, 'pubDate') || inner(block, 'published') || inner(block, 'updated') || inner(block, 'dc:date');\n    const date = Date.parse(dateStr);\n    const htmlBody = inner(block, 'content:encoded') || inner(block, 'content') || inner(block, 'description') || inner(block, 'summary');\n    const descr = stripHtml(inner(block, 'description') || inner(block, 'summary'));\n    const full = stripHtml(htmlBody);\n    const summary = (full.length > descr.length ? full : descr).slice(0, 2200);\n\n    // image candidates: media:content / thumbnail / enclosure, then <img> inside the body\n    const media = [];\n    for (const t of block.matchAll(/<(media:content|media:thumbnail|enclosure|itunes:image)\\b([^>]*)>/gi)) {\n      const a = attrs(t[2]);\n      const u = a.url || a.href;\n      if (!u) continue;\n      const kind = (a.type || a.medium || '').toLowerCase();\n      const isImg = kind.startsWith('image') || (!kind && /\\.(jpe?g|png|webp)(\\?|$)/i.test(u)) || /thumbnail|itunes:image/i.test(t[1]);\n      if (!isImg || BAD_IMG.test(u)) continue;\n      media.push({ u: absUrl(u, link), w: Number(a.width) || 0 });\n    }\n    media.sort((x, y) => y.w - x.w);\n    const inline = [];\n    for (const t of htmlBody.matchAll(/<img\\b([^>]*)>/gi)) {\n      const a = attrs(t[1]);\n      let u = a['data-src'] || a['data-lazy-src'] || a['data-orig-file'] || '';\n      if (!u && a.srcset) u = a.srcset.split(',').pop().trim().split(/\\s+/)[0];\n      if (!u) u = a.src || '';\n      if (!u || /^data:/i.test(u) || BAD_IMG.test(u)) continue;\n      if (Number(a.width) && Number(a.width) < 200) continue;\n      inline.push(absUrl(u, link));\n    }\n    const images = [...new Set([...media.map((x) => x.u), ...inline].filter(Boolean))].slice(0, 4);\n\n    out.push({\n      topic: feed.topic, label: feed.label, guide: feed.guide, colors: feed.colors, lang: feed.lang, count: feed.count,\n      title, link, date, summary, images,\n      source: hostOf(link),\n    });\n  }\n  return out;\n}\n\n// ---------- 1) fetch all feeds in parallel ----------\nconst feedErrors = [];\nconst fetched = await Promise.all(\n  feeds.map(async (f) => {\n    try {\n      const res = await this.helpers.httpRequest({\n        method: 'GET', url: f.url, timeout: 25000, encoding: 'text', returnFullResponse: true, ignoreHttpStatusErrors: true,\n        headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },\n      });\n      if (res.statusCode >= 400) throw new Error('HTTP ' + res.statusCode);\n      let items = parseFeed(String(res.body), f);\n      if (f.include) { const re = new RegExp(f.include, 'i'); items = items.filter((a) => re.test(a.title + ' ' + a.summary)); }\n      return items;\n    } catch (e) {\n      feedErrors.push(f.url + ' → ' + String(e.message).slice(0, 80));\n      return [];\n    }\n  }),\n);\nif (!fetched.some((x) => x.length) && feedErrors.length === feeds.length) {\n  throw new Error('Không đọc được feed nào (kiểm tra mạng của container). Ví dụ: ' + feedErrors.slice(0, 3).join(' | '));\n}\n\n\n// ---------- 2) pick: xen kẽ từng vòng giữa các chủ đề, mỗi chủ đề tối đa `count` bài ----------\nconst byTopic = new Map();\nfor (const f of feeds) if (!byTopic.has(f.topic)) byTopic.set(f.topic, { count: Number(f.count) || 1, items: [] });\nfetched.flat().forEach((a) => byTopic.get(a.topic).items.push(a));\nconst topicIds = [...byTopic.keys()];\nconst rot = Math.floor(now / 86400000) % topicIds.length;\nconst order = [...topicIds.slice(rot), ...topicIds.slice(0, rot)];\nconst usedKeys = new Set();\nconst usedTitles = new Set();\nconst picks = [];\nconst maxRounds = Math.max(...[...byTopic.values()].map((t) => t.count));\nfor (let round = 0; round < maxRounds; round++) {\n  for (const topic of order) {\n    const t = byTopic.get(topic);\n    if (round >= t.count) continue;\n    const a = t.items\n      .filter((x) => x.date && x.date <= now + 86400000 && now - x.date <= MAX_AGE_MS)\n      .filter((x) => !seen[normKey(x.link)] && !usedKeys.has(normKey(x.link)) && !usedTitles.has(titleKey(x.title)))\n      .sort((x, y) => y.date - x.date)[0];\n    if (!a) continue;\n    usedKeys.add(normKey(a.link));\n    usedTitles.add(titleKey(a.title));\n    picks.push(a);\n  }\n}\nconst chosen = picks.slice(0, MAX_POSTS);\n\n// ---------- 3) mở trang bài: lấy nội dung + tải nhiều ảnh ----------\nconst started = Date.now();\nconst DEADLINE = 200000; // Code node bị ngắt sau 300s → dừng tìm thêm ảnh khi gần hết giờ\nconst imageSize = (b) => {\n  try {\n    if (b[0] === 0x89 && b[1] === 0x50) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };\n    if (b[0] === 0xff && b[1] === 0xd8) {\n      let o = 2;\n      while (o < b.length - 9) {\n        if (b[o] !== 0xff) { o++; continue; }\n        const m = b[o + 1];\n        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7) || m === 0xff) { o += m === 0xff ? 1 : 2; continue; }\n        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: b.readUInt16BE(o + 5), w: b.readUInt16BE(o + 7) };\n        o += 2 + b.readUInt16BE(o + 2);\n      }\n    }\n    if (b.toString('latin1', 0, 4) === 'RIFF') {\n      const t = b.toString('latin1', 12, 16);\n      if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };\n      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }\n      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };\n    }\n  } catch (e) { /* ignore */ }\n  return null;\n};\nconst download = async (url, referer) => {\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'GET', url, timeout: 15000, encoding: 'arraybuffer', returnFullResponse: true, ignoreHttpStatusErrors: true,\n      headers: { 'User-Agent': UA, Accept: 'image/webp,image/png,image/jpeg,*/*;q=0.8', Referer: referer },\n    });\n    if (res.statusCode >= 400) return null;\n    const buf = toBuf(res.body);\n    const mime = sniff(buf);\n    if (!mime || buf.length < 12000 || buf.length > 9 * 1024 * 1024) return null;\n    const size = imageSize(buf);\n    if (!size) return null;\n    return { buf, mime, w: size.w, h: size.h };\n  } catch (e) { return null; }\n};\nconst fetchPage = async (page) => {\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'GET', url: page, timeout: 15000, encoding: 'text', returnFullResponse: true, ignoreHttpStatusErrors: true,\n      headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },\n    });\n    return res.statusCode >= 400 ? '' : String(res.body).slice(0, 1500000);\n  } catch (e) { return ''; }\n};\n// phần thân bài: <article> nếu có, không thì từ thẻ <h1> trở đi (tránh ảnh menu / logo đầu trang)\nconst mainPart = (html) => {\n  const m = html.match(/<article\\b[\\s\\S]*?<\\/article>/i);\n  if (m && m[0].length > 2000) return m[0];\n  const h1 = html.search(/<h1\\b/i);\n  return h1 >= 0 ? html.slice(h1, h1 + 250000) : html;\n};\nconst pageImages = (html, page) => {\n  const out = [];\n  for (const t of html.matchAll(/<meta\\b([^>]*)>/gi)) {\n    const a = attrs(t[1]);\n    const k = (a.property || a.name || '').toLowerCase();\n    if ((k === 'og:image' || k === 'og:image:url' || k === 'twitter:image') && a.content) { out.push(absUrl(a.content, page)); break; }\n  }\n  for (const t of mainPart(html).matchAll(/<img\\b([^>]*)>/gi)) {\n    const a = attrs(t[1]);\n    let u = a['data-src'] || a['data-original'] || a['data-lazy-src'] || a['data-orig-file'] || '';\n    if (!u && (a['data-srcset'] || a.srcset)) u = (a['data-srcset'] || a.srcset).split(',').pop().trim().split(/\\s+/)[0];\n    if (!u) u = a.src || '';\n    if (!u || /^data:/i.test(u) || BAD_IMG.test(u)) continue;\n    if (Number(a.width) && Number(a.width) < 300) continue;\n    out.push(absUrl(u, page));\n  }\n  return out;\n};\n// JSON-LD (schema.org NewsArticle) — nhiều báo nhúng sẵn danh sách ảnh + nội dung bài, kể cả trang dựng bằng JavaScript\nconst ldJson = (html, page) => {\n  const res = { images: [], body: '' };\n  const walk = (v) => {\n    if (Array.isArray(v)) return v.forEach(walk);\n    if (!v || typeof v !== 'object') return;\n    if (/Article|Posting/i.test(String(v['@type'] || ''))) {\n      const im = v.image;\n      for (const x of Array.isArray(im) ? im : [im]) {\n        const u = typeof x === 'string' ? x : x && (x.url || x.contentUrl);\n        if (u) res.images.push(absUrl(u, page));\n      }\n      if (typeof v.articleBody === 'string' && v.articleBody.length > res.body.length) res.body = stripHtml(v.articleBody);\n    }\n    Object.values(v).forEach((x) => typeof x === 'object' && walk(x));\n  };\n  for (const m of html.matchAll(/<script[^>]*application\\/ld\\+json[^>]*>([\\s\\S]*?)<\\/script>/gi)) {\n    try { walk(JSON.parse(m[1].trim())); } catch (e) { /* JSON-LD lỗi → bỏ qua */ }\n  }\n  return res;\n};\nconst pageText = (html) => {\n  const ps = [...mainPart(html).matchAll(/<p\\b[^>]*>([\\s\\S]*?)<\\/p>/gi)].map((m) => stripHtml(m[1])).filter((p) => p.length > 60);\n  return ps.join('\\n').slice(0, 6000);\n};\n// cùng một ảnh nhiều kích cỡ (…-300x200.jpg, ?w=…, /w680/…) → một khoá\nconst imgKey = (u) => String(u).toLowerCase().replace(/[?#].*$/, '').replace(/-\\d{2,4}x\\d{2,4}(?=\\.\\w+$)/, '').replace(/\\/w\\d{2,4}(_r\\d+x\\d+)?\\//, '/').replace(/^https?:\\/\\/[^/]+/, '');\nconst MIN_W = 500;\n\nconst out = [];\nfor (const a of chosen) {\n  const html = Date.now() - started < DEADLINE ? await fetchPage(a.link) : '';\n  const ld = html ? ldJson(html, a.link) : { images: [], body: '' };\n  let body = html ? pageText(html) : '';\n  if (body.length < 400 && ld.body.length > body.length) body = ld.body.slice(0, 6000);\n  const cands = [];\n  const seenImg = new Set();\n  for (const u of [...a.images, ...(html ? pageImages(html, a.link) : []), ...ld.images]) {\n    const k = imgKey(u);\n    if (!u || seenImg.has(k)) continue;\n    seenImg.add(k);\n    cands.push(u);\n  }\n  const imgs = [];\n  const sizes = new Set();\n  for (const u of cands.slice(0, 14)) {\n    if (imgs.length >= MAX_IMAGES || Date.now() - started > DEADLINE) break;\n    const variants = [u.replace(/-\\d{2,4}x\\d{2,4}(\\.(?:jpe?g|png|webp))(\\?.*)?$/i, '$1$2'), u].filter((v, i, s) => s.indexOf(v) === i);\n    let d = null;\n    for (const v of variants) { d = await download(v, a.link); if (d) break; }\n    if (!d || d.w < MIN_W || d.w / d.h > 3.2 || d.h / d.w > 3.2) continue; // bỏ ảnh nhỏ, banner dài\n    const sig = d.w + 'x' + d.h + ':' + Math.round(d.buf.length / 2000);\n    if (sizes.has(sig)) continue;\n    sizes.add(sig);\n    imgs.push(d);\n  }\n  const binary = {};\n  for (let k = 0; k < imgs.length; k++) {\n    const ext = imgs[k].mime === 'image/png' ? 'png' : imgs[k].mime === 'image/webp' ? 'webp' : 'jpg';\n    binary['img' + k] = await this.helpers.prepareBinaryData(imgs[k].buf, 'img' + k + '.' + ext, imgs[k].mime);\n  }\n  out.push({\n    json: {\n      topic: a.topic, label: a.label, guide: a.guide, colors: a.colors, lang: a.lang,\n      title: a.title, link: a.link, source: a.source, pubDate: new Date(a.date).toISOString(),\n      summary: a.summary, body, seenKey: normKey(a.link),\n      imageCount: imgs.length, imageSizes: imgs.map((x) => x.w + 'x' + x.h),\n    },\n    binary: imgs.length ? binary : undefined,\n  });\n}\nif (feedErrors.length) console.log('Feeds lỗi (' + feedErrors.length + '): ' + feedErrors.join(' ; '));\nconsole.log('Chọn ' + out.length + ' bài; số ảnh: ' + out.map((o) => o.json.imageCount).join(', '));\nreturn out;\n"
+      },
+      "id": "c10ee968-1d14-47b7-a8f7-c85104bb5033",
+      "name": "Fetch RSS & pick articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "1e3fc475-fdec-42e5-a084-0dbb06ab267e",
+      "name": "Loop over articles",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini viết câu chuyện cho bài TikTok dạng ảnh trượt: mỗi slide 1 đoạn kể chuyện (vuốt để xem tiếp),\n// bằng 2 ngôn ngữ (Anh + Việt), kèm caption + hashtag và tên quốc gia nơi xảy ra tin.\nconst cfg = $('Config').first().json;\nconst API_KEY = String(cfg.geminiApiKey || '').trim();\nif (!API_KEY || /PASTE|YOUR_/i.test(API_KEY)) throw new Error('Chưa có Gemini API key: điền vào node \"Config\" (geminiApiKey).');\nconst BASE = String(cfg.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\\/+$/, '');\nconst csv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\n// Gọi generateContent, tự thử lần lượt các model; tự chờ khi bị 429 tạm thời; báo \"quotaZero\" khi gói free không có hạn mức.\nconst callGemini = async (models, buildBody, opts = {}) => {\n  const started = Date.now();\n  const deadline = opts.deadlineMs || 200000;\n  let lastErr = null;\n  let allQuotaZero = true;\n  for (const model of models) {\n    for (let attempt = 0; attempt < 3; attempt++) {\n      if (Date.now() - started > deadline) break;\n      let res;\n      try {\n        res = await this.helpers.httpRequest({\n          method: 'POST',\n          url: BASE + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',\n          headers: { 'x-goog-api-key': API_KEY, 'Content-Type': 'application/json' },\n          body: buildBody(model), json: true, timeout: opts.timeout || 90000,\n          ignoreHttpStatusErrors: true, returnFullResponse: true,\n        });\n      } catch (e) {\n        lastErr = new Error(model + ': ' + e.message);\n        allQuotaZero = false;\n        await sleep(3000);\n        continue;\n      }\n      const status = res.statusCode;\n      const data = res.body;\n      if (status >= 200 && status < 300) return { model, data };\n      const msg = String((data && data.error && data.error.message) || JSON.stringify(data) || '').split('\\n')[0].slice(0, 220);\n      const full = String((data && data.error && data.error.message) || '');\n      lastErr = new Error(model + ' → HTTP ' + status + ': ' + msg);\n      if (status === 401 || status === 403 || (status === 400 && /API key/i.test(msg))) { lastErr.fatal = true; throw lastErr; }\n      if (status === 429) {\n        if (/limit:\\s*0\\b/.test(full)) break; // gói hiện tại không có hạn mức cho model này → thử model khác\n        allQuotaZero = false;\n        const det = ((data.error && data.error.details) || []).find((d) => d.retryDelay);\n        const wait = det ? parseFloat(det.retryDelay) : 12;\n        if (wait > 90) break; // hết hạn mức theo ngày → model khác\n        await sleep((wait + 1) * 1000);\n        continue;\n      }\n      allQuotaZero = false;\n      if (status >= 500) { await sleep(4000 * (attempt + 1)); continue; }\n      break; // 400 / 404 → model khác\n    }\n  }\n  const err = lastErr || new Error('Gemini request failed');\n  if (allQuotaZero) err.quotaZero = true;\n  throw err;\n};\n\n\nconst extractJson = (text) => {\n  const t = String(text || '').trim().replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(t); } catch (e) { /* try to find an object inside */ }\n  const m = t.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch (e) { /* fallthrough */ } }\n  throw new Error('Gemini không trả về JSON hợp lệ: ' + t.slice(0, 120));\n};\n\nconst TEXT_MODELS = csv(cfg.textModels);\nconst SLIDES_MIN = Number(cfg.slidesMin || 4), SLIDES_MAX = Number(cfg.slidesMax || 6);\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\nlet stamp;\ntry { stamp = $now.toFormat('yyyy-LL-dd_HHmm'); } catch (e) { stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', ''); }\nconst slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'post';\nconst clean = (s) => String(s || '').replace(/\\s+/g, ' ').trim();\n\nconst SYSTEM = [\n  'You are the editor of a TikTok account about veganism, animal rights and compassion for animals.',\n  'You turn one news article into a TikTok PHOTO CAROUSEL that tells the story slide by slide, so viewers keep swiping.',\n  'Rules: use ONLY facts from the article; never invent numbers, names or quotes. Never describe gore or graphic suffering.',\n  'Warm, compassionate, hopeful; never preachy, never shaming people. Write Vietnamese naturally with correct diacritics (not word-for-word translation).',\n].join('\\n');\n\nconst out = [];\nconst items = $input.all();\nfor (let idx = 0; idx < items.length; idx++) {\n  const item = items[idx];\n  const j = item.json;\n  const N = Math.max(SLIDES_MIN, Math.min(SLIDES_MAX, j.imageCount || SLIDES_MIN));\n  try {\n    const prompt = [\n      'TOPIC: ' + j.label,\n      'STYLE GUIDE: ' + j.guide,\n      'SOURCE: ' + j.source + ' (article language: ' + (j.lang === 'vi' ? 'Vietnamese' : 'English') + ')',\n      'TITLE: ' + j.title,\n      'PUBLISHED: ' + j.pubDate,\n      'ARTICLE:',\n      (j.body && j.body.length > 300 ? j.body : j.summary) || '(no text - rely on the title only and stay general)',\n      '',\n      'Return ONE JSON object with exactly these keys:',\n      '\"relevance\": integer 0-10 — how well this story fits an account about VEGANISM and ANIMAL RIGHTS. '\n        + '9-10: the story is directly about vegan / plant-based eating, animal cruelty or welfare, factory farming, slaughter, fur, animal testing, animal-rights laws or campaigns, wildlife trafficking / poaching, or rescuing, releasing or sheltering animals. '\n        + '6-8: animals or plant-based food appear but the main point is something else (business, tourism, general science). '\n        + '0-5: animals are only a theme or decoration — art, sculptures, toys, robots, entertainment, nature trivia, animal attacks, pet products, hunting stories, unrelated news. Be strict.',\n      '\"relevance_reason\": one short English sentence explaining the score.',\n      '\"country_en\": ONLY if the news is about a concrete event in one specific country (a rescue, a law, a study, a farm, a city...), the short English name of that country (e.g. \"USA\", \"UK\", \"Vietnam\", \"Kenya\"). For general topics, tips, recipes or global issues return \"\". Do not guess from where the publisher is based.',\n      '\"country_vi\": the same country name in Vietnamese (e.g. \"Mỹ\", \"Anh\", \"Việt Nam\", \"Kenya\"); \"\" if global or unclear.',\n      '\"flag\": the flag emoji of that country, or \"\" if none.',\n      '\"slides_en\": array of EXACTLY ' + N + ' strings in English telling the story in order, one per photo. '\n        + 'Slide 1 = a strong curiosity hook, 8-14 words. Middle slides = the story step by step, 18-35 words each, each ending with a small cliffhanger or open question that makes people swipe. '\n        + 'Last slide = what it means / what we can do, plus a gentle call to follow or comment (do NOT say swipe on the last slide), max 30 words. No hashtags, no emojis, no URLs.',\n      '\"slides_vi\": the same ' + N + ' slides written in natural Vietnamese (same rules).',\n      '\"caption_en\": TikTok caption in English: 1-2 short sentences (max 35 words) that state the ONE main point of this news, using concrete facts from the article (who, what, where, numbers if given). '\n        + 'Stay on that single topic. NO questions, NO question marks, NO call to action, no emojis, no hashtags. Do NOT start with the country name (it is added automatically).',\n      '\"caption_vi\": the same caption in natural Vietnamese (same rules: no questions, no question marks).',\n      '\"hashtags_en\": array of 4-6 English hashtags WITHOUT #, no spaces.',\n      '\"hashtags_vi\": array of 4-6 hashtags for Vietnamese viewers WITHOUT #, no spaces, no diacritics (e.g. \"anchay\", \"bảo vệ động vật\" → \"baovedongvat\").',\n    ].join('\\n');\n    const { model, data } = await callGemini(TEXT_MODELS, () => ({\n      systemInstruction: { parts: [{ text: SYSTEM }] },\n      contents: [{ role: 'user', parts: [{ text: prompt }] }],\n      generationConfig: { responseMimeType: 'application/json' },\n    }), { timeout: 90000, deadlineMs: 220000 });\n    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];\n    const r = extractJson(parts.filter((p) => p.text && !p.thought).map((p) => p.text).join(''));\n    const MIN_REL = Number(cfg.minRelevance || 7);\n    if (!(Number(r.relevance) >= MIN_REL)) {\n      if (sd) { sd.seenTikTok = sd.seenTikTok || {}; sd.seenTikTok[j.seenKey] = Date.now(); } // không lấy lại bài này\n      out.push({ json: { ...j, body: undefined, error: 'bỏ qua: không đúng chủ đề vegan / quyền động vật (điểm ' + r.relevance + '/10: ' + clean(r.relevance_reason) + ')' } });\n      continue;\n    }\n    const fix = (arr) => (Array.isArray(arr) ? arr.map(clean).filter(Boolean) : []);\n    const tags = (arr) => (Array.isArray(arr) ? arr : String(arr || '').split(/[\\s,]+/))\n      .map((h) => String(h).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/^#+/, '').replace(/[^A-Za-z0-9_]/g, ''))\n      .filter(Boolean).slice(0, 6);\n    const slidesEn = fix(r.slides_en), slidesVi = fix(r.slides_vi);\n    if (slidesEn.length < 2 || slidesVi.length < 2) throw new Error('Gemini thiếu slides');\n    const noQ = (s) => clean(s).replace(/[^.!?]*\\?\\s*/g, '').trim() || clean(s).replace(/\\?/g, '.'); // phòng khi Gemini vẫn đặt câu hỏi\n    const base = stamp + '_' + slug(j.title);\n    out.push({\n      json: {\n        ...j, body: undefined, textModel: model,\n        countryEn: clean(r.country_en), countryVi: clean(r.country_vi), flag: clean(r.flag),\n        posts: [\n          { lang: 'en', folder: base + '_en', slides: slidesEn, caption: noQ(r.caption_en), hashtags: tags(r.hashtags_en) },\n          { lang: 'vi', folder: base + '_vi', slides: slidesVi, caption: noQ(r.caption_vi), hashtags: tags(r.hashtags_vi) },\n        ],\n      },\n      binary: item.binary,\n    });\n  } catch (e) {\n    if (e.fatal) throw new Error('Gemini từ chối API key: ' + e.message);\n    out.push({ json: { ...j, body: undefined, error: 'gemini: ' + e.message } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "39f5f6c2-0189-4241-ab55-0defc0b1d5cf",
+      "name": "Gemini: write story",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f11dc65-c2f8-489d-8122-9215c4e852db",
+              "leftValue": "={{ !$json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b0c67ad7-9220-4101-94bf-247b85176f94",
+      "name": "Has story?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p \"{{ $('Config').first().json.outputDir }}/{{ $json.posts[0].folder }}\" \"{{ $('Config').first().json.outputDir }}/{{ $json.posts[1].folder }}\""
+      },
+      "id": "67c5b887-0d93-4dd4-ad0e-61c7d73f5c6b",
+      "name": "Create post folders",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dựng slide TikTok 1080x1920 cho 2 bản (EN + VI): mỗi slide 1 ảnh của bài + 1 đoạn chuyện.\n// Ảnh ngang: hiện đủ ảnh ở trên, nền là chính ảnh đó làm mờ, chữ ở dưới. Ảnh dọc: phủ kín khung, chữ trên lớp tối.\n// Mọi toạ độ tính ở đây; 2 node Edit Image phía sau chỉ việc vẽ. Chữ tránh vùng bị giao diện TikTok che (trên ~150px, dưới ~540px, phải ~170px).\nconst cfg = $('Config').first().json;\nconst src = $('Gemini: write story').first();\nconst j = src.json;\nconst BRAND = String(cfg.brandName || '').trim().toUpperCase() || ' ';\n\n// ---- image utils ----\nconst sniff = (b) => {\n  if (!b || b.length < 12) return null;\n  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';\n  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';\n  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';\n  return null;\n};\nconst extOf = (mime) => (mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg');\nconst imageSize = (b) => {\n  try {\n    if (b[0] === 0x89 && b[1] === 0x50) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };\n    if (b[0] === 0xff && b[1] === 0xd8) {\n      let o = 2;\n      while (o < b.length - 9) {\n        if (b[o] !== 0xff) { o++; continue; }\n        const m = b[o + 1];\n        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7) || m === 0xff) { o += m === 0xff ? 1 : 2; continue; }\n        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: b.readUInt16BE(o + 5), w: b.readUInt16BE(o + 7) };\n        o += 2 + b.readUInt16BE(o + 2);\n      }\n    }\n    if (b.toString('latin1', 0, 4) === 'RIFF') {\n      const t = b.toString('latin1', 12, 16);\n      if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };\n      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }\n      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };\n    }\n  } catch (e) { /* ignore */ }\n  return null;\n};\n\n// 8x10 gradient PNG (không cần thư viện) — node Edit Image sẽ phóng to thành nền 1080x1350.\nconst CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();\nconst crc32 = (buf) => { let c = 0xffffffff; for (const x of buf) c = CRC_T[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };\nconst adler32 = (buf) => { let a = 1, b = 0; for (const x of buf) { a = (a + x) % 65521; b = (b + a) % 65521; } return ((b << 16) | a) >>> 0; };\nconst be32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n >>> 0); return b; };\nconst chunk = (type, data) => { const td = Buffer.concat([Buffer.from(type, 'ascii'), data]); return Buffer.concat([be32(data.length), td, be32(crc32(td))]); };\nconst gradientPng = (c1, c2) => {\n  const w = 8, h = 10;\n  const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));\n  const A = hex(c1), B = hex(c2);\n  const stride = 1 + w * 3;\n  const raw = Buffer.alloc(stride * h);\n  for (let y = 0; y < h; y++) {\n    const px = A.map((v, i) => Math.round(v + (B[i] - v) * (y / (h - 1))));\n    for (let x = 0; x < w; x++) raw.set(px, y * stride + 1 + x * 3);\n  }\n  const L = raw.length;\n  const z = Buffer.concat([Buffer.from([0x78, 0x01, 0x01, L & 255, L >> 8, ~L & 255, (~L >> 8) & 255]), raw, be32(adler32(raw))]);\n  const ihdr = Buffer.concat([be32(w), be32(h), Buffer.from([8, 2, 0, 0, 0])]);\n  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', z), chunk('IEND', Buffer.alloc(0))]);\n};\n\n// Lớp tối 1080x1350 (PNG palette + tRNS, mỗi dòng 1 độ trong suốt) — node Edit Image ghép lên ảnh, chuyển mượt không bị sọc.\nconst zStore = (raw) => {\n  const parts = [Buffer.from([0x78, 0x01])];\n  for (let o = 0; o < raw.length; o += 65535) {\n    const L = Math.min(65535, raw.length - o);\n    parts.push(Buffer.from([o + L >= raw.length ? 1 : 0, L & 255, L >> 8, ~L & 255, (~L >> 8) & 255]), raw.subarray(o, o + L));\n  }\n  parts.push(be32(adler32(raw)));\n  return Buffer.concat(parts);\n};\nconst ease = (t) => t * t * (3 - 2 * t);\nconst shadePng = (w, h, alphaAt) => {\n  const plte = Buffer.alloc(256 * 3), trns = Buffer.alloc(256);\n  for (let i = 0; i < 256; i++) trns[i] = i;\n  const raw = Buffer.alloc((w + 1) * h);\n  for (let y = 0; y < h; y++) raw.fill(Math.max(0, Math.min(255, Math.round(alphaAt(y)))), y * (w + 1) + 1, (y + 1) * (w + 1));\n  const ihdr = Buffer.concat([be32(w), be32(h), Buffer.from([8, 3, 0, 0, 0])]);\n  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('PLTE', plte), chunk('tRNS', trns), chunk('IDAT', zStore(raw)), chunk('IEND', Buffer.alloc(0))]);\n};\n\nconst wrap = (text, maxChars) => {\n  const lines = [];\n  let cur = '';\n  for (const w of String(text).split(/\\s+/)) {\n    if (cur && (cur + ' ' + w).length > maxChars) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;\n  }\n  if (cur) lines.push(cur);\n  const n = lines.length;\n  if (n >= 2 && !/\\s/.test(lines[n - 1])) {\n    const prev = lines[n - 2].split(' ');\n    if (prev.length >= 3) { lines[n - 1] = prev.pop() + ' ' + lines[n - 1]; lines[n - 2] = prev.join(' '); }\n  }\n  return lines;\n};\nconst tidy = (s) => String(s || '').replace(/\"([^\"]*)\"/g, '“$1”').replace(/\"/g, '”').replace(/'/g, '’').replace(/\\\\/g, '/');\n\nconst W = 1080, H = 1920, ML = 72, TEXT_W = W - ML - 170, BOTTOM = 1380, FG_Y = 250, MAX_LINES = 11;\nconst layout = (s) => {\n  const { text, first, lang, img, label, footer, idx, total, reuse } = s;\n  const vi = lang === 'vi';\n  // ảnh ngang → kiểu \"card\" (ảnh đầy đủ + nền mờ); ảnh dọc / không có ảnh → phủ kín khung\n  const fgH = img ? Math.round((W * img.h) / img.w) : 0;\n  const card = !!img && fgH <= 860 && !reuse; // ảnh dùng lại lần 2+ → phủ kín khung, cắt vào chỗ khác cho đỡ trùng\n  const sc = img ? Math.max(W / img.w, H / img.h) : 1;\n  const sw = img ? Math.max(W, Math.round(img.w * sc)) : W, sh = img ? Math.max(H, Math.round(img.h * sc)) : H;\n  const fx = [0.5, 0.2, 0.8][reuse % 3], fy = [0.4, 0.5, 0.45][reuse % 3]; // ảnh dùng lại → cắt chỗ khác\n  const labelFs = 34, labelH = 62;\n  let fs = first ? 76 : 56;\n  const minFs = first ? 50 : 40, maxLines = first ? 6 : MAX_LINES;\n  const lh = (f) => Math.round(f * (vi ? 1.3 : 1.22));\n  const top0 = card ? FG_Y + fgH + 60 + (first ? labelH + 28 : 0) : 0;\n  let lines;\n  for (;;) {\n    lines = wrap(text, Math.floor(TEXT_W / (fs * 0.56)));\n    const blockH = lines.length * lh(fs);\n    const fits = lines.length <= maxLines && (card ? top0 + blockH <= BOTTOM : blockH <= BOTTOM - 420);\n    if (fits || fs <= minFs) break;\n    fs -= 2;\n  }\n  lines = lines.slice(0, MAX_LINES);\n  const blockH = lines.length * lh(fs);\n  const headTop = card ? Math.min(top0, BOTTOM - blockH) : BOTTOM - blockH;\n  const labelY = headTop - 28 - labelH;\n  const textTop = first ? labelY : headTop;\n  const shadeFrom = Math.max(0, textTop - 340), shadeTo = Math.max(1, textTop - 30);\n  const labelText = tidy(label).toUpperCase();\n  const counter = idx + 1 + '/' + total;\n  return {\n    resizeW: W, resizeH: H, cropX: Math.floor((sw - W) * fx), cropY: Math.floor((sh - H) * fy),\n    blurW: card ? 54 : W, blurH: card ? 96 : H, // thu nhỏ rồi phóng lại = làm mờ nền (chỉ kiểu card)\n    fgW: W, fgH: card ? fgH : 10, fgY: card ? FG_Y : 5000,\n    card,\n    shadeKey: card ? 'card' : 'fill:' + Math.round(shadeFrom / 20),\n    shadeFrom, shadeTo,\n    brand: { text: BRAND, x: ML, y: 150 + Math.round(0.74 * 32), fs: 32 },\n    counter: { text: counter, x: W - ML - Math.round(counter.length * 0.62 * 32), y: 150 + Math.round(0.74 * 32), fs: 32 },\n    label: first\n      ? { x: ML, y: labelY, w: Math.round(labelText.length * labelFs * 0.68 + 44), h: labelH, text: labelText, tx: ML + 22, ty: labelY + Math.round((labelH + 0.72 * labelFs) / 2), fs: labelFs }\n      : { x: ML, y: 5000, w: 10, h: 10, text: '.', tx: ML, ty: 5000, fs: labelFs },\n    lines: Array.from({ length: MAX_LINES }, (_, i) => lines[i]\n      ? { text: tidy(lines[i]), y: headTop + i * lh(fs) + Math.round(0.74 * fs), fs, color: first && lines.length >= 2 && i === lines.length - 1 ? '#FFD84D' : '#FFFFFF' }\n      : { text: '.', y: 5000, fs, color: '#FFFFFF' }),\n    footer: footer\n      ? { text: tidy(footer), y: BOTTOM + 40 + Math.round(0.74 * 34), fs: 34 }\n      : { text: '.', y: 5000, fs: 34 },\n  };\n};\nconst shadeFor = (L) => shadePng(W, H, L.card\n  ? () => 135 // nền mờ: tối đều để chữ trắng dễ đọc\n  : (y) => Math.max(y < 380 ? 150 * ease(1 - y / 380) : 0, y <= L.shadeFrom ? 0 : y >= L.shadeTo ? 215 : 215 * ease((y - L.shadeFrom) / (L.shadeTo - L.shadeFrom))));\n\n// ---- ảnh của bài ----\nconst imgs = [];\nfor (let k = 0; src.binary && src.binary['img' + k]; k++) {\n  const [w, h] = String((j.imageSizes || [])[k] || '1200x800').split('x').map(Number); // kích thước đo ở node Fetch\n  imgs.push({ key: 'img' + k, bin: src.binary['img' + k], w, h });\n}\nlet gradient = null;\nif (!imgs.length) {\n  const c = Array.isArray(j.colors) && j.colors.length === 2 ? j.colors : ['#14532d', '#16a34a'];\n  gradient = await this.helpers.prepareBinaryData(gradientPng(c[0], c[1]), 'bg.png', 'image/png');\n}\n\nconst shades = new Map();\nconst out = [];\nfor (const p of j.posts) {\n  const vi = p.lang === 'vi';\n  const country = vi ? j.countryVi : j.countryEn;\n  const total = p.slides.length;\n  for (let i = 0; i < total; i++) {\n    const im = imgs.length ? imgs[i % imgs.length] : null;\n    const L = layout({\n      text: p.slides[i], first: i === 0, lang: p.lang, idx: i, total,\n      img: im, reuse: imgs.length ? Math.floor(i / imgs.length) : 0,\n      label: country || (vi ? 'Tin tức' : 'News'),\n      footer: i === 0 ? (vi ? 'Vuốt để xem tiếp →' : 'Swipe to see more →') : i === total - 1 ? (vi ? 'Nguồn: ' : 'Source: ') + j.source : '',\n    });\n    if (!shades.has(L.shadeKey)) shades.set(L.shadeKey, await this.helpers.prepareBinaryData(shadeFor(L), 'shade.png', 'image/png'));\n    out.push({\n      json: { title: j.title, lang: p.lang, folder: p.folder, slide: i + 1, total, file: String(i + 1).padStart(2, '0') + '.jpg', compose: L },\n      binary: { photo: im ? im.bin : gradient, shade: shades.get(L.shadeKey) },\n    });\n  }\n}\nreturn out;\n"
+      },
+      "id": "9ac88757-dc5f-4903-8459-9af54f7c1ef0",
+      "name": "Build slides",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "dataPropertyName": "photo",
+        "width": "={{ $json.compose.fgW }}",
+        "height": "={{ $json.compose.fgH }}",
+        "resizeOption": "ignoreAspectRatio",
+        "options": {
+          "destinationKey": "fg",
+          "format": "jpeg",
+          "quality": 92
+        }
+      },
+      "id": "a740d69d-cd55-4f90-ac84-fcdf621532aa",
+      "name": "Make foreground",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1.1,
+      "position": [
+        2240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "multiStep",
+        "dataPropertyName": "photo",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": "={{ $json.compose.resizeW }}",
+              "height": "={{ $json.compose.resizeH }}",
+              "resizeOption": "minimumArea"
+            },
+            {
+              "operation": "crop",
+              "width": "={{ $json.compose.resizeW }}",
+              "height": "={{ $json.compose.resizeH }}",
+              "positionX": "={{ $json.compose.cropX }}",
+              "positionY": "={{ $json.compose.cropY }}"
+            },
+            {
+              "operation": "resize",
+              "width": "={{ $json.compose.blurW }}",
+              "height": "={{ $json.compose.blurH }}",
+              "resizeOption": "ignoreAspectRatio"
+            },
+            {
+              "operation": "resize",
+              "width": "={{ $json.compose.resizeW }}",
+              "height": "={{ $json.compose.resizeH }}",
+              "resizeOption": "ignoreAspectRatio"
+            },
+            {
+              "operation": "composite",
+              "dataPropertyNameComposite": "shade",
+              "operator": "Over",
+              "positionX": 0,
+              "positionY": 0
+            },
+            {
+              "operation": "composite",
+              "dataPropertyNameComposite": "fg",
+              "operator": "Over",
+              "positionX": 0,
+              "positionY": "={{ $json.compose.fgY }}"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.brand.text }}",
+              "fontSize": "={{ $json.compose.brand.fs }}",
+              "fontColor": "#FFFFFF",
+              "positionX": "={{ $json.compose.brand.x }}",
+              "positionY": "={{ $json.compose.brand.y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.counter.text }}",
+              "fontSize": "={{ $json.compose.counter.fs }}",
+              "fontColor": "#FFFFFF",
+              "positionX": "={{ $json.compose.counter.x }}",
+              "positionY": "={{ $json.compose.counter.y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "draw",
+              "primitive": "rectangle",
+              "color": "#FFFFFF",
+              "startPositionX": "={{ $json.compose.label.x }}",
+              "startPositionY": "={{ $json.compose.label.y }}",
+              "endPositionX": "={{ $json.compose.label.x + $json.compose.label.w }}",
+              "endPositionY": "={{ $json.compose.label.y + $json.compose.label.h }}",
+              "cornerRadius": 0
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.label.text }}",
+              "fontSize": "={{ $json.compose.label.fs }}",
+              "fontColor": "#111111",
+              "positionX": "={{ $json.compose.label.tx }}",
+              "positionY": "={{ $json.compose.label.ty }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[0].text }}",
+              "fontSize": "={{ $json.compose.lines[0].fs }}",
+              "fontColor": "={{ $json.compose.lines[0].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[0].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[1].text }}",
+              "fontSize": "={{ $json.compose.lines[1].fs }}",
+              "fontColor": "={{ $json.compose.lines[1].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[1].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[2].text }}",
+              "fontSize": "={{ $json.compose.lines[2].fs }}",
+              "fontColor": "={{ $json.compose.lines[2].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[2].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[3].text }}",
+              "fontSize": "={{ $json.compose.lines[3].fs }}",
+              "fontColor": "={{ $json.compose.lines[3].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[3].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[4].text }}",
+              "fontSize": "={{ $json.compose.lines[4].fs }}",
+              "fontColor": "={{ $json.compose.lines[4].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[4].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[5].text }}",
+              "fontSize": "={{ $json.compose.lines[5].fs }}",
+              "fontColor": "={{ $json.compose.lines[5].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[5].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[6].text }}",
+              "fontSize": "={{ $json.compose.lines[6].fs }}",
+              "fontColor": "={{ $json.compose.lines[6].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[6].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[7].text }}",
+              "fontSize": "={{ $json.compose.lines[7].fs }}",
+              "fontColor": "={{ $json.compose.lines[7].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[7].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[8].text }}",
+              "fontSize": "={{ $json.compose.lines[8].fs }}",
+              "fontColor": "={{ $json.compose.lines[8].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[8].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[9].text }}",
+              "fontSize": "={{ $json.compose.lines[9].fs }}",
+              "fontColor": "={{ $json.compose.lines[9].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[9].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[10].text }}",
+              "fontSize": "={{ $json.compose.lines[10].fs }}",
+              "fontColor": "={{ $json.compose.lines[10].color }}",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.lines[10].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.footer.text }}",
+              "fontSize": "={{ $json.compose.footer.fs }}",
+              "fontColor": "#FFD84D",
+              "positionX": 72,
+              "positionY": "={{ $json.compose.footer.y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            }
+          ]
+        },
+        "options": {
+          "destinationKey": "image",
+          "format": "jpeg",
+          "quality": 90,
+          "fileName": "slide.jpg"
+        }
+      },
+      "id": "694a9691-c45e-478a-a2c8-afa79cf37b20",
+      "name": "Make slide",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1.1,
+      "position": [
+        2480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mỗi bài → 2 thư mục (bản _en và _vi) trong tiktok_output: 01.jpg, 02.jpg, … + caption.txt (caption đăng TikTok).\nconst cfg = $('Config').first().json;\nconst DIR = String(cfg.outputDir || '/files/tiktok_output').replace(/[\\\\/]+$/, '');\nconst story = $('Gemini: write story').first().json;\n\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\n\nconst out = [];\nfor (const item of $input.all()) {\n  const s = item.json;\n  if (!item.binary || !item.binary.image) continue;\n  out.push({ json: { filePath: DIR + '/' + s.folder + '/' + s.file, kind: 'slide', lang: s.lang, folder: s.folder, title: s.title }, binary: { data: item.binary.image } });\n}\nfor (const p of story.posts) {\n  const vi = p.lang === 'vi';\n  const country = vi ? story.countryVi : story.countryEn;\n  const head = country ? (story.flag ? story.flag + ' ' : '') + country + ': ' : '';\n  const text = [\n    head + p.caption,\n    p.hashtags.map((h) => '#' + h).join(' '),\n    (vi ? 'Nguồn: ' : 'Source: ') + story.source + ' – ' + story.link,\n  ].filter(Boolean).join('\\n\\n') + '\\n';\n  out.push({\n    json: { filePath: DIR + '/' + p.folder + '/caption.txt', kind: 'caption', lang: p.lang, folder: p.folder, title: story.title },\n    binary: { data: await this.helpers.prepareBinaryData(Buffer.from(text, 'utf8'), 'caption.txt', 'text/plain') },\n  });\n}\n\nif (sd) { // nhớ bài đã làm để lần chạy sau không lặp lại\n  sd.seenTikTok = sd.seenTikTok || {};\n  sd.seenTikTok[story.seenKey] = Date.now();\n  for (const k of Object.keys(sd.seenTikTok)) if (Date.now() - sd.seenTikTok[k] > 90 * 86400000) delete sd.seenTikTok[k];\n}\nreturn out;\n"
+      },
+      "id": "8eb7b5e1-ae61-4a3b-8a0f-3c732a32e3a2",
+      "name": "Build output files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c8d0bc22-7da0-46ba-883e-ec3e7d1fc60e",
+              "leftValue": "={{ !!$json.filePath }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5540a797-730b-4565-8cbf-20f54a037a7c",
+      "name": "Has file to save?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.filePath }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "941c06da-8352-4dbb-bb63-7c1c3e41d154",
+      "name": "Save to output folder",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tổng kết sau khi xử lý xong tất cả bài.\nconst all = $input.all().map((i) => i.json);\nconst cfg = $('Config').first().json;\nconst saved = all.filter((x) => !x.error && x.filePath);\nconst folders = [...new Set(saved.map((x) => x.folder))];\nreturn [{\n  json: {\n    outputDir: cfg.outputDir,\n    posts: folders.length,\n    slides: saved.filter((x) => x.kind === 'slide').length,\n    folders,\n    skippedOrFailed: all.filter((x) => x.error).map((x) => (x.title ? x.title + ' — ' : '') + x.error),\n  },\n}];\n"
+      },
+      "id": "efca91ce-d7ee-4bc8-afe3-db5b41b0f13f",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every day 15:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "RSS feed list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS feed list": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS & pick articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS & pick articles": {
+      "main": [
+        [
+          {
+            "node": "Loop over articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over articles": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini: write story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: write story": {
+      "main": [
+        [
+          {
+            "node": "Has story?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has story?": {
+      "main": [
+        [
+          {
+            "node": "Create post folders",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop over articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create post folders": {
+      "main": [
+        [
+          {
+            "node": "Build slides",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build slides": {
+      "main": [
+        [
+          {
+            "node": "Make foreground",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make foreground": {
+      "main": [
+        [
+          {
+            "node": "Make slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make slide": {
+      "main": [
+        [
+          {
+            "node": "Build output files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build output files": {
+      "main": [
+        [
+          {
+            "node": "Has file to save?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has file to save?": {
+      "main": [
+        [
+          {
+            "node": "Save to output folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop over articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to output folder": {
+      "main": [
+        [
+          {
+            "node": "Loop over articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "pinData": {},
+  "id": "wyIWCuPd53uw5RtJ"
+}

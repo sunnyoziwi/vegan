@@ -6,7 +6,6 @@ run/
 
 # bản workflow còn key thật — KHÔNG đẩy lên GitHub
 .local/
-n8n-vegan-tiktok-workflow.json
 .env
 
 .DS_Store
