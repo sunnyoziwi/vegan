@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Vegan & Animal rights → TikTok (ảnh trượt, 2 ngôn ngữ)\nMỗi lần chạy: đọc RSS tin tiếng Anh + tiếng Việt (vegan, quyền động vật) → chọn bài mới chưa làm → mở trang bài lấy nội dung + **nhiều ảnh** → Gemini kể lại câu chuyện thành 4–6 slide (vuốt để xem tiếp) bằng **tiếng Anh và tiếng Việt**, kèm caption + hashtag + tên quốc gia → ghép chữ lên ảnh 1080x1920.\n\n**Kết quả**: `tiktok_output/<ngày>_<tên-bài>_en/` và `…_vi/`, mỗi thư mục có `01.jpg, 02.jpg, …` + `caption.txt` (dòng đầu dạng `🇬🇧 UK: caption`).\n\n**Cài đặt**: compose.yaml mount `./tiktok_output:/files/tiktok_output`, `N8N_RESTRICT_FILE_ACCESS_TO=/files/output;/files/tiktok_output`, và bật node Execute Command (`NODES_EXCLUDE`) để tạo thư mục.\n**Tuỳ chỉnh** (node Config): `maxArticles` (số bài/lần, mỗi bài ra 2 post), `slidesMin/slidesMax`, `maxImagesPerPost`, `minRelevance` (Gemini chấm 0–10 độ đúng chủ đề vegan / quyền động vật; dưới mức này bài bị bỏ). Nguồn tin: node *RSS feed list*.",
-        "height": 420,
+        "content": "## Vegan & Animal rights → TikTok (ảnh trượt, 2 ngôn ngữ)\nMỗi lần chạy: đọc RSS tin tiếng Anh + tiếng Việt (vegan, quyền động vật) → chọn bài mới chưa làm → mở trang bài lấy nội dung + **nhiều ảnh** → Gemini kể lại câu chuyện thành 4–6 slide (vuốt để xem tiếp) bằng **tiếng Anh và tiếng Việt**, kèm caption + hashtag + tên quốc gia → ghép chữ lên ảnh 1080x1920.\n\n**Kết quả**: `tiktok_output/<ngày>_<tên-bài>_en/` và `…_vi/`, mỗi thư mục có `01.jpg, 02.jpg, …` + `caption.txt` (dòng đầu dạng `🇬🇧 UK: caption`).\n\n**Cài đặt**: compose.yaml mount `./tiktok_output:/files/tiktok_output`, `N8N_RESTRICT_FILE_ACCESS_TO=/files/output;/files/tiktok_output`, và bật node Execute Command (`NODES_EXCLUDE`) để tạo thư mục.\n**Tuỳ chỉnh** (node Config): `maxArticles` (số bài/lần, mỗi bài ra 2 post), `slidesMin/slidesMax`, `maxImagesPerPost`, `minRelevance` (Gemini chấm 0–10 độ đúng chủ đề vegan / quyền động vật; dưới mức này bài bị bỏ). Nguồn tin: node *RSS feed list*.\n\n**Đăng TikTok** (node *Publish to TikTok*): đẩy ảnh slide lên GitHub Pages (`githubRepo`, URL prefix `pagesBaseUrl` đã xác minh với TikTok), rồi gửi bài ảnh lên TikTok. `tiktokPostMode = inbox` → vào hộp nháp trong app TikTok (gắn giỏ hàng rồi bấm Đăng); `direct` → đăng thẳng (cần app đã được TikTok duyệt; `tiktokPrivacy`). Cần điền `githubToken` (fine-grained, chỉ repo vegan-legal, Contents: Read and write) và `tiktokClientKey/Secret/RefreshToken`. Ảnh cũ hơn `keepImagesDays` ngày tự xoá khỏi repo.\n\n**Hẹn giờ TikTok** (`tiktokSchedule = true`): lúc tạo bài, mỗi post được xếp giờ vào `queue.json` trong repo GitHub Pages — bài EN chia đều `tiktokEnStart–tiktokEnEnd` theo `tiktokEnTimezone` (mặc định 08:00–20:00 giờ Mỹ ET), bài VI chia đều `tiktokViStart–tiktokViEnd` theo giờ Việt Nam (10:00–22:00). Trigger *Every 15 minutes* gửi bài đến giờ lên TikTok (mỗi ngôn ngữ tối đa 1 bài/lần). Xem lịch: https://sunnyoziwi.github.io/vegan-legal/queue.json",
+        "height": 680,
         "width": 620,
         "color": 5
       },
@@ -118,6 +118,102 @@
               "name": "minRelevance",
               "value": 7,
               "type": "number"
+            },
+            {
+              "id": "345faef3-8041-4403-975c-dc5cfefe8cee",
+              "name": "githubToken",
+              "value": "PASTE_GITHUB_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "7885eac4-3fb6-4938-aa09-cf820b7744ba",
+              "name": "githubRepo",
+              "value": "sunnyoziwi/vegan-legal",
+              "type": "string"
+            },
+            {
+              "id": "c45a4f01-cab7-4432-a4bf-27c837cb503e",
+              "name": "pagesBaseUrl",
+              "value": "https://sunnyoziwi.github.io/vegan-legal/",
+              "type": "string"
+            },
+            {
+              "id": "a6597d15-4646-48e6-bab7-dbed189cb7ac",
+              "name": "tiktokClientKey",
+              "value": "PASTE_TIKTOK_CLIENT_KEY",
+              "type": "string"
+            },
+            {
+              "id": "d5489389-c86e-4945-b0c1-32e7a44d665b",
+              "name": "tiktokClientSecret",
+              "value": "PASTE_TIKTOK_CLIENT_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "fb4a7a11-6134-4a59-98bb-9d3e73ed1b02",
+              "name": "tiktokRefreshToken",
+              "value": "PASTE_TIKTOK_REFRESH_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "6ed69ead-f209-4095-8232-eee69170f3b4",
+              "name": "tiktokPostMode",
+              "value": "inbox",
+              "type": "string"
+            },
+            {
+              "id": "03429619-29ee-4bb6-87fe-360552204105",
+              "name": "tiktokPrivacy",
+              "value": "SELF_ONLY",
+              "type": "string"
+            },
+            {
+              "id": "693fa6cd-ce74-49e2-8ebf-e0f62968c96e",
+              "name": "keepImagesDays",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "06d1d871-f671-4eba-9035-d7e1be0872a2",
+              "name": "tiktokSchedule",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "e3e6d4fa-fa65-4c38-9e0d-63008b6aebc4",
+              "name": "tiktokEnTimezone",
+              "value": "America/New_York",
+              "type": "string"
+            },
+            {
+              "id": "64ed03fe-9e34-4f24-a7cf-b26057f2853e",
+              "name": "tiktokEnStart",
+              "value": "08:00",
+              "type": "string"
+            },
+            {
+              "id": "4711e1e9-f70d-41d0-ad0a-f64ae387854b",
+              "name": "tiktokEnEnd",
+              "value": "20:00",
+              "type": "string"
+            },
+            {
+              "id": "f1fb130e-2e15-4982-9666-ae84c4adc1b4",
+              "name": "tiktokViTimezone",
+              "value": "Asia/Ho_Chi_Minh",
+              "type": "string"
+            },
+            {
+              "id": "c72bf869-ce4d-4cf8-8a35-96b541022919",
+              "name": "tiktokViStart",
+              "value": "10:00",
+              "type": "string"
+            },
+            {
+              "id": "51836ccd-eaa0-49e6-ace1-c211801c2b3b",
+              "name": "tiktokViEnd",
+              "value": "22:00",
+              "type": "string"
             }
           ]
         },
@@ -128,7 +224,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        400,
+        360,
         300
       ]
     },
@@ -141,7 +237,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        640,
+        800,
         300
       ]
     },
@@ -154,7 +250,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
+        1040,
         300
       ]
     },
@@ -174,7 +270,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gemini viết câu chuyện cho bài TikTok dạng ảnh trượt: mỗi slide 1 đoạn kể chuyện (vuốt để xem tiếp),\n// bằng 2 ngôn ngữ (Anh + Việt), kèm caption + hashtag và tên quốc gia nơi xảy ra tin.\nconst cfg = $('Config').first().json;\nconst API_KEY = String(cfg.geminiApiKey || '').trim();\nif (!API_KEY || /PASTE|YOUR_/i.test(API_KEY)) throw new Error('Chưa có Gemini API key: điền vào node \"Config\" (geminiApiKey).');\nconst BASE = String(cfg.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\\/+$/, '');\nconst csv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\n// Gọi generateContent, tự thử lần lượt các model; tự chờ khi bị 429 tạm thời; báo \"quotaZero\" khi gói free không có hạn mức.\nconst callGemini = async (models, buildBody, opts = {}) => {\n  const started = Date.now();\n  const deadline = opts.deadlineMs || 200000;\n  let lastErr = null;\n  let allQuotaZero = true;\n  for (const model of models) {\n    for (let attempt = 0; attempt < 3; attempt++) {\n      if (Date.now() - started > deadline) break;\n      let res;\n      try {\n        res = await this.helpers.httpRequest({\n          method: 'POST',\n          url: BASE + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',\n          headers: { 'x-goog-api-key': API_KEY, 'Content-Type': 'application/json' },\n          body: buildBody(model), json: true, timeout: opts.timeout || 90000,\n          ignoreHttpStatusErrors: true, returnFullResponse: true,\n        });\n      } catch (e) {\n        lastErr = new Error(model + ': ' + e.message);\n        allQuotaZero = false;\n        await sleep(3000);\n        continue;\n      }\n      const status = res.statusCode;\n      const data = res.body;\n      if (status >= 200 && status < 300) return { model, data };\n      const msg = String((data && data.error && data.error.message) || JSON.stringify(data) || '').split('\\n')[0].slice(0, 220);\n      const full = String((data && data.error && data.error.message) || '');\n      lastErr = new Error(model + ' → HTTP ' + status + ': ' + msg);\n      if (status === 401 || status === 403 || (status === 400 && /API key/i.test(msg))) { lastErr.fatal = true; throw lastErr; }\n      if (status === 429) {\n        if (/limit:\\s*0\\b/.test(full)) break; // gói hiện tại không có hạn mức cho model này → thử model khác\n        allQuotaZero = false;\n        const det = ((data.error && data.error.details) || []).find((d) => d.retryDelay);\n        const wait = det ? parseFloat(det.retryDelay) : 12;\n        if (wait > 90) break; // hết hạn mức theo ngày → model khác\n        await sleep((wait + 1) * 1000);\n        continue;\n      }\n      allQuotaZero = false;\n      if (status >= 500) { await sleep(4000 * (attempt + 1)); continue; }\n      break; // 400 / 404 → model khác\n    }\n  }\n  const err = lastErr || new Error('Gemini request failed');\n  if (allQuotaZero) err.quotaZero = true;\n  throw err;\n};\n\n\nconst extractJson = (text) => {\n  const t = String(text || '').trim().replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(t); } catch (e) { /* try to find an object inside */ }\n  const m = t.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch (e) { /* fallthrough */ } }\n  throw new Error('Gemini không trả về JSON hợp lệ: ' + t.slice(0, 120));\n};\n\nconst TEXT_MODELS = csv(cfg.textModels);\nconst SLIDES_MIN = Number(cfg.slidesMin || 4), SLIDES_MAX = Number(cfg.slidesMax || 6);\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\nlet stamp;\ntry { stamp = $now.toFormat('yyyy-LL-dd_HHmm'); } catch (e) { stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', ''); }\nconst slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'post';\nconst clean = (s) => String(s || '').replace(/\\s+/g, ' ').trim();\n\nconst SYSTEM = [\n  'You are the editor of a TikTok account about veganism, animal rights and compassion for animals.',\n  'You turn one news article into a TikTok PHOTO CAROUSEL that tells the story slide by slide, so viewers keep swiping.',\n  'Rules: use ONLY facts from the article; never invent numbers, names or quotes. Never describe gore or graphic suffering.',\n  'Warm, compassionate, hopeful; never preachy, never shaming people. Write Vietnamese naturally with correct diacritics (not word-for-word translation).',\n].join('\\n');\n\nconst out = [];\nconst items = $input.all();\nfor (let idx = 0; idx < items.length; idx++) {\n  const item = items[idx];\n  const j = item.json;\n  const N = Math.max(SLIDES_MIN, Math.min(SLIDES_MAX, j.imageCount || SLIDES_MIN));\n  try {\n    const prompt = [\n      'TOPIC: ' + j.label,\n      'STYLE GUIDE: ' + j.guide,\n      'SOURCE: ' + j.source + ' (article language: ' + (j.lang === 'vi' ? 'Vietnamese' : 'English') + ')',\n      'TITLE: ' + j.title,\n      'PUBLISHED: ' + j.pubDate,\n      'ARTICLE:',\n      (j.body && j.body.length > 300 ? j.body : j.summary) || '(no text - rely on the title only and stay general)',\n      '',\n      'Return ONE JSON object with exactly these keys:',\n      '\"relevance\": integer 0-10 — how well this story fits an account about VEGANISM and ANIMAL RIGHTS. '\n        + '9-10: the story is directly about vegan / plant-based eating, animal cruelty or welfare, factory farming, slaughter, fur, animal testing, animal-rights laws or campaigns, wildlife trafficking / poaching, or rescuing, releasing or sheltering animals. '\n        + '6-8: animals or plant-based food appear but the main point is something else (business, tourism, general science). '\n        + '0-5: animals are only a theme or decoration — art, sculptures, toys, robots, entertainment, nature trivia, animal attacks, pet products, hunting stories, unrelated news. Be strict.',\n      '\"relevance_reason\": one short English sentence explaining the score.',\n      '\"country_en\": ONLY if the news is about a concrete event in one specific country (a rescue, a law, a study, a farm, a city...), the short English name of that country (e.g. \"USA\", \"UK\", \"Vietnam\", \"Kenya\"). For general topics, tips, recipes or global issues return \"\". Do not guess from where the publisher is based.',\n      '\"country_vi\": the same country name in Vietnamese (e.g. \"Mỹ\", \"Anh\", \"Việt Nam\", \"Kenya\"); \"\" if global or unclear.',\n      '\"flag\": the flag emoji of that country, or \"\" if none.',\n      '\"slides_en\": array of EXACTLY ' + N + ' strings in English telling the story in order, one per photo. '\n        + 'Slide 1 = a strong curiosity hook, 8-14 words. Middle slides = the story step by step, 18-35 words each, each ending with a small cliffhanger or open question that makes people swipe. '\n        + 'Last slide = what it means / what we can do, plus a gentle call to follow or comment (do NOT say swipe on the last slide), max 30 words. No hashtags, no emojis, no URLs.',\n      '\"slides_vi\": the same ' + N + ' slides written in natural Vietnamese (same rules).',\n      '\"caption_en\": TikTok caption in English: 1-2 short sentences (max 35 words) that state the ONE main point of this news, using concrete facts from the article (who, what, where, numbers if given). '\n        + 'Stay on that single topic. NO questions, NO question marks, NO call to action, no emojis, no hashtags. Do NOT start with the country name (it is added automatically).',\n      '\"caption_vi\": the same caption in natural Vietnamese (same rules: no questions, no question marks).',\n      '\"hashtags_en\": array of 4-6 English hashtags WITHOUT #, no spaces.',\n      '\"hashtags_vi\": array of 4-6 hashtags for Vietnamese viewers WITHOUT #, no spaces, no diacritics (e.g. \"anchay\", \"bảo vệ động vật\" → \"baovedongvat\").',\n    ].join('\\n');\n    const { model, data } = await callGemini(TEXT_MODELS, () => ({\n      systemInstruction: { parts: [{ text: SYSTEM }] },\n      contents: [{ role: 'user', parts: [{ text: prompt }] }],\n      generationConfig: { responseMimeType: 'application/json' },\n    }), { timeout: 90000, deadlineMs: 220000 });\n    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];\n    const r = extractJson(parts.filter((p) => p.text && !p.thought).map((p) => p.text).join(''));\n    const MIN_REL = Number(cfg.minRelevance || 7);\n    if (!(Number(r.relevance) >= MIN_REL)) {\n      if (sd) { sd.seenTikTok = sd.seenTikTok || {}; sd.seenTikTok[j.seenKey] = Date.now(); } // không lấy lại bài này\n      out.push({ json: { ...j, body: undefined, error: 'bỏ qua: không đúng chủ đề vegan / quyền động vật (điểm ' + r.relevance + '/10: ' + clean(r.relevance_reason) + ')' } });\n      continue;\n    }\n    const fix = (arr) => (Array.isArray(arr) ? arr.map(clean).filter(Boolean) : []);\n    const tags = (arr) => (Array.isArray(arr) ? arr : String(arr || '').split(/[\\s,]+/))\n      .map((h) => String(h).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/^#+/, '').replace(/[^A-Za-z0-9_]/g, ''))\n      .filter(Boolean).slice(0, 6);\n    const slidesEn = fix(r.slides_en), slidesVi = fix(r.slides_vi);\n    if (slidesEn.length < 2 || slidesVi.length < 2) throw new Error('Gemini thiếu slides');\n    const noQ = (s) => clean(s).replace(/[^.!?]*\\?\\s*/g, '').trim() || clean(s).replace(/\\?/g, '.'); // phòng khi Gemini vẫn đặt câu hỏi\n    const base = stamp + '_' + slug(j.title);\n    out.push({\n      json: {\n        ...j, body: undefined, textModel: model,\n        countryEn: clean(r.country_en), countryVi: clean(r.country_vi), flag: clean(r.flag),\n        posts: [\n          { lang: 'en', folder: base + '_en', slides: slidesEn, caption: noQ(r.caption_en), hashtags: tags(r.hashtags_en) },\n          { lang: 'vi', folder: base + '_vi', slides: slidesVi, caption: noQ(r.caption_vi), hashtags: tags(r.hashtags_vi) },\n        ],\n      },\n      binary: item.binary,\n    });\n  } catch (e) {\n    if (e.fatal) throw new Error('Gemini từ chối API key: ' + e.message);\n    out.push({ json: { ...j, body: undefined, error: 'gemini: ' + e.message } });\n  }\n}\nreturn out;\n"
+        "jsCode": "// Gemini viết câu chuyện cho bài TikTok dạng ảnh trượt: mỗi slide 1 đoạn kể chuyện (vuốt để xem tiếp),\n// bằng 2 ngôn ngữ (Anh + Việt), kèm caption + hashtag và tên quốc gia nơi xảy ra tin.\nconst cfg = $('Config').first().json;\nconst API_KEY = String(cfg.geminiApiKey || '').trim();\nif (!API_KEY || /PASTE|YOUR_/i.test(API_KEY)) throw new Error('Chưa có Gemini API key: điền vào node \"Config\" (geminiApiKey).');\nconst BASE = String(cfg.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\\/+$/, '');\nconst csv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\n// Gọi generateContent, tự thử lần lượt các model; tự chờ khi bị 429 tạm thời; báo \"quotaZero\" khi gói free không có hạn mức.\nconst callGemini = async (models, buildBody, opts = {}) => {\n  const started = Date.now();\n  const deadline = opts.deadlineMs || 200000;\n  let lastErr = null;\n  let allQuotaZero = true;\n  for (const model of models) {\n    for (let attempt = 0; attempt < 3; attempt++) {\n      if (Date.now() - started > deadline) break;\n      let res;\n      try {\n        res = await this.helpers.httpRequest({\n          method: 'POST',\n          url: BASE + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',\n          headers: { 'x-goog-api-key': API_KEY, 'Content-Type': 'application/json' },\n          body: buildBody(model), json: true, timeout: opts.timeout || 90000,\n          ignoreHttpStatusErrors: true, returnFullResponse: true,\n        });\n      } catch (e) {\n        lastErr = new Error(model + ': ' + e.message);\n        allQuotaZero = false;\n        await sleep(3000);\n        continue;\n      }\n      const status = res.statusCode;\n      const data = res.body;\n      if (status >= 200 && status < 300) return { model, data };\n      const msg = String((data && data.error && data.error.message) || JSON.stringify(data) || '').split('\\n')[0].slice(0, 220);\n      const full = String((data && data.error && data.error.message) || '');\n      lastErr = new Error(model + ' → HTTP ' + status + ': ' + msg);\n      if (status === 401 || status === 403 || (status === 400 && /API key/i.test(msg))) { lastErr.fatal = true; throw lastErr; }\n      if (status === 429) {\n        if (/limit:\\s*0\\b/.test(full)) break; // gói hiện tại không có hạn mức cho model này → thử model khác\n        allQuotaZero = false;\n        const det = ((data.error && data.error.details) || []).find((d) => d.retryDelay);\n        const wait = det ? parseFloat(det.retryDelay) : 12;\n        if (wait > 90) break; // hết hạn mức theo ngày → model khác\n        await sleep((wait + 1) * 1000);\n        continue;\n      }\n      allQuotaZero = false;\n      if (status >= 500) { await sleep(4000 * (attempt + 1)); continue; }\n      break; // 400 / 404 → model khác\n    }\n  }\n  const err = lastErr || new Error('Gemini request failed');\n  if (allQuotaZero) err.quotaZero = true;\n  throw err;\n};\n\n\nconst extractJson = (text) => {\n  const t = String(text || '').trim().replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(t); } catch (e) { /* try to find an object inside */ }\n  const m = t.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch (e) { /* fallthrough */ } }\n  throw new Error('Gemini không trả về JSON hợp lệ: ' + t.slice(0, 120));\n};\n\nconst TEXT_MODELS = csv(cfg.textModels);\nconst SLIDES_MIN = Number(cfg.slidesMin || 4), SLIDES_MAX = Number(cfg.slidesMax || 6);\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\nlet stamp;\ntry { stamp = $now.toFormat('yyyy-LL-dd_HHmm'); } catch (e) { stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', ''); }\nconst slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'post';\nconst clean = (s) => String(s || '').replace(/\\s+/g, ' ').trim();\n\nconst SYSTEM = [\n  'You are the editor of a TikTok account about veganism, animal rights and compassion for animals.',\n  'You turn one news article into a TikTok PHOTO CAROUSEL that tells the story slide by slide, so viewers keep swiping.',\n  'Rules: use ONLY facts from the article; never invent numbers, names or quotes. Never describe gore or graphic suffering.',\n  'Warm, compassionate, hopeful; never preachy, never shaming people. Write Vietnamese naturally with correct diacritics (not word-for-word translation).',\n].join('\\n');\n\nconst out = [];\nconst items = $input.all();\nfor (let idx = 0; idx < items.length; idx++) {\n  const item = items[idx];\n  const j = item.json;\n  const N = Math.max(SLIDES_MIN, Math.min(SLIDES_MAX, j.imageCount || SLIDES_MIN));\n  try {\n    const prompt = [\n      'TOPIC: ' + j.label,\n      'STYLE GUIDE: ' + j.guide,\n      'SOURCE: ' + j.source + ' (article language: ' + (j.lang === 'vi' ? 'Vietnamese' : 'English') + ')',\n      'TITLE: ' + j.title,\n      'PUBLISHED: ' + j.pubDate,\n      'ARTICLE:',\n      (j.body && j.body.length > 300 ? j.body : j.summary) || '(no text - rely on the title only and stay general)',\n      '',\n      'Return ONE JSON object with exactly these keys:',\n      '\"relevance\": integer 0-10 — how well this story fits an account about VEGANISM and ANIMAL RIGHTS. '\n        + '9-10: the story is directly about vegan / plant-based eating, animal cruelty or welfare, factory farming, slaughter, fur, animal testing, animal-rights laws or campaigns, wildlife trafficking / poaching, or rescuing, releasing or sheltering animals. '\n        + '6-8: animals or plant-based food appear but the main point is something else (business, tourism, general science). '\n        + '0-5: animals are only a theme or decoration — art, sculptures, toys, robots, entertainment, nature trivia, animal attacks, pet products, hunting stories, unrelated news. Be strict.',\n      '\"relevance_reason\": one short English sentence explaining the score.',\n      '\"country_en\": ONLY if the news is about a concrete event in one specific country (a rescue, a law, a study, a farm, a city...), the short English name of that country (e.g. \"USA\", \"UK\", \"Vietnam\", \"Kenya\"). For general topics, tips, recipes or global issues return \"\". Do not guess from where the publisher is based.',\n      '\"country_vi\": the same country name in Vietnamese (e.g. \"Mỹ\", \"Anh\", \"Việt Nam\", \"Kenya\"); \"\" if global or unclear.',\n      '\"flag\": the flag emoji of that country, or \"\" if none.',\n      '\"slides_en\": array of EXACTLY ' + N + ' strings in English telling the story in order, one per photo. '\n        + 'Slide 1 = a strong curiosity hook, 8-14 words. Middle slides = the story step by step, 18-35 words each, each ending with a small cliffhanger or open question that makes people swipe. '\n        + 'Last slide = what it means / what we can do, plus a gentle call to follow or comment (do NOT say swipe on the last slide), max 30 words. No hashtags, no emojis, no URLs.',\n      '\"slides_vi\": the same ' + N + ' slides written in natural Vietnamese (same rules).',\n      '\"caption_en\": TikTok caption in English: 1-2 short sentences (max 35 words) that state the ONE main point of this news, using concrete facts from the article (who, what, where, numbers if given). '\n        + 'Stay on that single topic. NO questions, NO question marks, NO call to action, no emojis, no hashtags. Do NOT start with the country name (it is added automatically).',\n      '\"caption_vi\": the same caption in natural Vietnamese (same rules: no questions, no question marks).',\n      '\"hashtags_en\": array of 4-6 English hashtags WITHOUT #, no spaces.',\n      '\"hashtags_vi\": array of 4-6 hashtags for Vietnamese viewers WITHOUT #, no spaces, no diacritics (e.g. \"anchay\", \"bảo vệ động vật\" → \"baovedongvat\").',\n    ].join('\\n');\n    const { model, data } = await callGemini(TEXT_MODELS, () => ({\n      systemInstruction: { parts: [{ text: SYSTEM }] },\n      contents: [{ role: 'user', parts: [{ text: prompt }] }],\n      generationConfig: { responseMimeType: 'application/json' },\n    }), { timeout: 90000, deadlineMs: 220000 });\n    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];\n    const r = extractJson(parts.filter((p) => p.text && !p.thought).map((p) => p.text).join(''));\n    const MIN_REL = Number(cfg.minRelevance || 7);\n    if (!(Number(r.relevance) >= MIN_REL)) {\n      if (sd) { sd.seenTikTok = sd.seenTikTok || {}; sd.seenTikTok[j.seenKey] = Date.now(); } // không lấy lại bài này\n      out.push({ json: { ...j, body: undefined, error: 'bỏ qua: không đúng chủ đề vegan / quyền động vật (điểm ' + r.relevance + '/10: ' + clean(r.relevance_reason) + ')' } });\n      continue;\n    }\n    const fix = (arr) => (Array.isArray(arr) ? arr.map(clean).filter(Boolean) : []);\n    const tags = (arr) => (Array.isArray(arr) ? arr : String(arr || '').split(/[\\s,]+/))\n      .map((h) => String(h).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/^#+/, '').replace(/[^A-Za-z0-9_]/g, ''))\n      .filter(Boolean).slice(0, 6);\n    const slidesEn = fix(r.slides_en), slidesVi = fix(r.slides_vi);\n    if (slidesEn.length < 2 || slidesVi.length < 2) throw new Error('Gemini thiếu slides');\n    const noQ = (s) => clean(s).replace(/[^.!?]*\\?\\s*/g, '').trim() || clean(s).replace(/\\?/g, '.'); // phòng khi Gemini vẫn đặt câu hỏi\n    const base = stamp + '_' + slug(j.title);\n    const flag = clean(r.flag), cEn = clean(r.country_en), cVi = clean(r.country_vi);\n    // caption đăng TikTok (cũng là caption.txt): \"🇻🇳 Việt Nam: …\" + hashtag + nguồn\n    const captionText = (vi, caption, hashtags) => {\n      const country = vi ? cVi : cEn;\n      const head = country ? (flag ? flag + ' ' : '') + country + ': ' : '';\n      return [head + caption, hashtags.map((h) => '#' + h).join(' '), (vi ? 'Nguồn: ' : 'Source: ') + j.source + ' – ' + j.link].filter(Boolean).join('\\n\\n');\n    };\n    const capEn = noQ(r.caption_en), capVi = noQ(r.caption_vi), tagsEn = tags(r.hashtags_en), tagsVi = tags(r.hashtags_vi);\n    out.push({\n      json: {\n        ...j, body: undefined, textModel: model,\n        countryEn: cEn, countryVi: cVi, flag,\n        posts: [\n          { lang: 'en', folder: base + '_en', slides: slidesEn, caption: capEn, hashtags: tagsEn, captionText: captionText(false, capEn, tagsEn) },\n          { lang: 'vi', folder: base + '_vi', slides: slidesVi, caption: capVi, hashtags: tagsVi, captionText: captionText(true, capVi, tagsVi) },\n        ],\n      },\n      binary: item.binary,\n    });\n  } catch (e) {\n    if (e.fatal) throw new Error('Gemini từ chối API key: ' + e.message);\n    out.push({ json: { ...j, body: undefined, error: 'gemini: ' + e.message } });\n  }\n}\nreturn out;\n"
       },
       "id": "39f5f6c2-0189-4241-ab55-0defc0b1d5cf",
       "name": "Gemini: write story",
@@ -522,14 +618,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Mỗi bài → 2 thư mục (bản _en và _vi) trong tiktok_output: 01.jpg, 02.jpg, … + caption.txt (caption đăng TikTok).\nconst cfg = $('Config').first().json;\nconst DIR = String(cfg.outputDir || '/files/tiktok_output').replace(/[\\\\/]+$/, '');\nconst story = $('Gemini: write story').first().json;\n\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\n\nconst out = [];\nfor (const item of $input.all()) {\n  const s = item.json;\n  if (!item.binary || !item.binary.image) continue;\n  out.push({ json: { filePath: DIR + '/' + s.folder + '/' + s.file, kind: 'slide', lang: s.lang, folder: s.folder, title: s.title }, binary: { data: item.binary.image } });\n}\nfor (const p of story.posts) {\n  const vi = p.lang === 'vi';\n  const country = vi ? story.countryVi : story.countryEn;\n  const head = country ? (story.flag ? story.flag + ' ' : '') + country + ': ' : '';\n  const text = [\n    head + p.caption,\n    p.hashtags.map((h) => '#' + h).join(' '),\n    (vi ? 'Nguồn: ' : 'Source: ') + story.source + ' – ' + story.link,\n  ].filter(Boolean).join('\\n\\n') + '\\n';\n  out.push({\n    json: { filePath: DIR + '/' + p.folder + '/caption.txt', kind: 'caption', lang: p.lang, folder: p.folder, title: story.title },\n    binary: { data: await this.helpers.prepareBinaryData(Buffer.from(text, 'utf8'), 'caption.txt', 'text/plain') },\n  });\n}\n\nif (sd) { // nhớ bài đã làm để lần chạy sau không lặp lại\n  sd.seenTikTok = sd.seenTikTok || {};\n  sd.seenTikTok[story.seenKey] = Date.now();\n  for (const k of Object.keys(sd.seenTikTok)) if (Date.now() - sd.seenTikTok[k] > 90 * 86400000) delete sd.seenTikTok[k];\n}\nreturn out;\n"
+        "jsCode": "// Mỗi bài → 2 thư mục (bản _en và _vi) trong tiktok_output: 01.jpg, 02.jpg, … + caption.txt (caption đăng TikTok).\nconst cfg = $('Config').first().json;\nconst DIR = String(cfg.outputDir || '/files/tiktok_output').replace(/[\\\\/]+$/, '');\nconst story = $('Gemini: write story').first().json;\n\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\n\nconst out = [];\nconst tiktok = {}; // folder → kết quả đăng TikTok (node \"Publish to TikTok\")\nfor (const item of $input.all()) {\n  const s = item.json;\n  if (s.tiktok) tiktok[s.folder] = s.tiktok;\n  if (!item.binary || !item.binary.image) continue;\n  out.push({ json: { filePath: DIR + '/' + s.folder + '/' + s.file, kind: 'slide', lang: s.lang, folder: s.folder, title: s.title }, binary: { data: item.binary.image } });\n}\nfor (const p of story.posts) {\n  const text = p.captionText + '\\n';\n  out.push({\n    json: { filePath: DIR + '/' + p.folder + '/caption.txt', kind: 'caption', lang: p.lang, folder: p.folder, title: story.title, tiktok: tiktok[p.folder] || '' },\n    binary: { data: await this.helpers.prepareBinaryData(Buffer.from(text, 'utf8'), 'caption.txt', 'text/plain') },\n  });\n}\n\nif (sd) { // nhớ bài đã làm để lần chạy sau không lặp lại\n  sd.seenTikTok = sd.seenTikTok || {};\n  sd.seenTikTok[story.seenKey] = Date.now();\n  for (const k of Object.keys(sd.seenTikTok)) if (Date.now() - sd.seenTikTok[k] > 90 * 86400000) delete sd.seenTikTok[k];\n}\nreturn out;\n"
       },
       "id": "8eb7b5e1-ae61-4a3b-8a0f-3c732a32e3a2",
       "name": "Build output files",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2720,
+        2960,
         400
       ]
     },
@@ -563,7 +659,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2960,
+        3200,
         400
       ]
     },
@@ -579,14 +675,14 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
       "position": [
-        3200,
+        3440,
         300
       ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Tổng kết sau khi xử lý xong tất cả bài.\nconst all = $input.all().map((i) => i.json);\nconst cfg = $('Config').first().json;\nconst saved = all.filter((x) => !x.error && x.filePath);\nconst folders = [...new Set(saved.map((x) => x.folder))];\nreturn [{\n  json: {\n    outputDir: cfg.outputDir,\n    posts: folders.length,\n    slides: saved.filter((x) => x.kind === 'slide').length,\n    folders,\n    skippedOrFailed: all.filter((x) => x.error).map((x) => (x.title ? x.title + ' — ' : '') + x.error),\n  },\n}];\n"
+        "jsCode": "// Tổng kết sau khi xử lý xong tất cả bài.\nconst all = $input.all().map((i) => i.json);\nconst cfg = $('Config').first().json;\nconst saved = all.filter((x) => !x.error && x.filePath);\nconst folders = [...new Set(saved.map((x) => x.folder))];\nreturn [{\n  json: {\n    outputDir: cfg.outputDir,\n    posts: folders.length,\n    slides: saved.filter((x) => x.kind === 'slide').length,\n    folders,\n    tiktok: saved.filter((x) => x.kind === 'caption').map((x) => x.folder + ' → ' + (x.tiktok || '—')),\n    skippedOrFailed: all.filter((x) => x.error).map((x) => (x.title ? x.title + ' — ' : '') + x.error),\n  },\n}];\n"
       },
       "id": "efca91ce-d7ee-4bc8-afe3-db5b41b0f13f",
       "name": "Summary",
@@ -595,6 +691,86 @@
       "position": [
         1360,
         120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Đưa 2 bài (EN + VI) của bài báo này lên TikTok:\n//  1) đẩy ảnh slide lên repo GitHub Pages (TikTok chỉ lấy ảnh từ URL prefix đã xác minh = pagesBaseUrl) — 1 commit,\n//     xoá ảnh cũ hơn keepImagesDays;\n//  2) tiktokSchedule = true → xếp lịch vào queue.json trong repo (EN chia đều theo giờ tiktokEnTimezone, VI theo\n//     tiktokViTimezone); nhánh \"Every 15 minutes\" sẽ gửi khi đến giờ. false → gửi ngay.\n// post mode: \"inbox\" = vào hộp nháp TikTok; \"direct\" = đăng thẳng (cần app đã được TikTok duyệt).\nconst cfg = $('Config').first().json;\nconst story = $('Gemini: write story').first().json;\nconst items = $input.all();\n// ---- dùng chung với node \"Publish due TikTok posts\" ----\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst filled = (v) => { const s = String(v || '').trim(); return s && !/PASTE|YOUR_/i.test(s) ? s : ''; };\nconst GH_TOKEN = filled(cfg.githubToken), REPO = String(cfg.githubRepo || '').trim();\nconst PAGES = String(cfg.pagesBaseUrl || '').replace(/\\/*$/, '/');\nconst CK = filled(cfg.tiktokClientKey), CS = filled(cfg.tiktokClientSecret), RT = filled(cfg.tiktokRefreshToken);\nconst MODE = String(cfg.tiktokPostMode || 'inbox').toLowerCase() === 'direct' ? 'DIRECT_POST' : 'MEDIA_UPLOAD';\nconst missing = [!GH_TOKEN && 'githubToken', !REPO && 'githubRepo', !CK && 'tiktokClientKey', !CS && 'tiktokClientSecret', !RT && 'tiktokRefreshToken'].filter(Boolean);\n\nconst http = async (opts) => {\n  const res = await this.helpers.httpRequest({ json: true, timeout: 60000, ignoreHttpStatusErrors: true, returnFullResponse: true, ...opts });\n  return { status: res.statusCode, body: res.body };\n};\nconst gh = (method, path, body) => http({\n  method, url: 'https://api.github.com/repos/' + REPO + path, body,\n  headers: { Authorization: 'Bearer ' + GH_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'n8n-vegan-tiktok', 'X-GitHub-Api-Version': '2022-11-28' },\n});\nconst must = (r, what) => { if (r.status >= 300) throw new Error(what + ' → HTTP ' + r.status + ' ' + JSON.stringify(r.body).slice(0, 200)); return r.body; };\n\n// hàng đợi hẹn giờ = file queue.json trong repo (n8n không lưu static data khi chạy tay, nên không dùng static data)\nconst readQueue = async () => {\n  const r = await gh('GET', '/contents/queue.json?ref=main');\n  if (r.status === 404) return { queue: [], sha: null };\n  const b = must(r, 'GitHub queue.json');\n  return { queue: JSON.parse(Buffer.from(b.content, 'base64').toString('utf8') || '[]'), sha: b.sha };\n};\n\nconst tiktokAccess = async () => {\n  const tok = await http({\n    method: 'POST', url: 'https://open.tiktokapis.com/v2/oauth/token/', json: false,\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: 'client_key=' + encodeURIComponent(CK) + '&client_secret=' + encodeURIComponent(CS) + '&grant_type=refresh_token&refresh_token=' + encodeURIComponent(RT),\n  });\n  try { if (typeof tok.body === 'string') tok.body = JSON.parse(tok.body); } catch (e) { /* để nguyên */ }\n  if (!tok.body || !tok.body.access_token) throw new Error('TikTok refresh token lỗi: ' + JSON.stringify(tok.body).slice(0, 200) + ' — kết nối lại tài khoản TikTok');\n  return tok.body.access_token;\n};\n// gửi 1 bài ảnh (ảnh đã nằm trên GitHub Pages) → trạng thái dễ đọc\nconst tiktokPost = async (access, { title, captionText, photos }) => {\n  const tt = (path, body) => http({ method: 'POST', url: 'https://open.tiktokapis.com' + path, body, headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/json; charset=UTF-8' } });\n  const body = {\n    media_type: 'PHOTO', post_mode: MODE,\n    post_info: MODE === 'DIRECT_POST'\n      ? { title: title.slice(0, 90), description: captionText.slice(0, 4000), privacy_level: String(cfg.tiktokPrivacy || 'SELF_ONLY'), disable_comment: false, auto_add_music: true }\n      : { title: title.slice(0, 90), description: captionText.slice(0, 4000) },\n    source_info: { source: 'PULL_FROM_URL', photo_cover_index: 0, photo_images: photos },\n  };\n  const init = await tt('/v2/post/publish/content/init/', body);\n  const pid = init.body && init.body.data && init.body.data.publish_id;\n  if (!pid) return 'error: ' + JSON.stringify((init.body && init.body.error) || init.body).slice(0, 200);\n  let st = 'PROCESSING';\n  for (let t = 0; t < 8 && /PROCESSING|DOWNLOAD|UPLOAD/.test(st); t++) {\n    await sleep(4000);\n    const s = await tt('/v2/post/publish/status/fetch/', { publish_id: pid });\n    const d = (s.body && s.body.data) || {};\n    st = d.status || st;\n    if (st === 'FAILED') st = 'error: FAILED ' + (d.fail_reason || '');\n  }\n  return st === 'SEND_TO_USER_INBOX' ? 'inbox (vào hộp nháp TikTok)' : st === 'PUBLISH_COMPLETE' ? 'published' : st;\n};\nconst SCHEDULE = cfg.tiktokSchedule !== false && String(cfg.tiktokSchedule).toLowerCase() !== 'false';\nconst KEEP_DAYS = Number(cfg.keepImagesDays || 7);\nconst results = {}; // folder → trạng thái\nconst finish = () => items.map((it) => ({ json: { ...it.json, tiktok: results[it.json.folder] || '' }, binary: it.binary }));\nif (missing.length) {\n  for (const p of story.posts) results[p.folder] = 'skipped (chưa có ' + missing.join(', ') + ' trong Config)';\n  return finish();\n}\n\n// ---- giờ đăng: bài thứ i của lần chạy này → mốc i chia đều trong khung giờ của ngôn ngữ ----\nconst runId = String($execution.id);\nconst total = Math.max(1, $('Fetch RSS & pick articles').all().length);\nconst slot = $runIndex; // vòng lặp xử lý 1 bài báo / lần\nconst hm = (s, d) => { const m = String(s || d).match(/^(\\d{1,2}):(\\d{2})$/); return m ? { hour: +m[1], minute: +m[2] } : hm(d, d); };\nconst WIN = {\n  en: { tz: cfg.tiktokEnTimezone || 'America/New_York', start: hm(cfg.tiktokEnStart, '08:00'), end: hm(cfg.tiktokEnEnd, '20:00') },\n  vi: { tz: cfg.tiktokViTimezone || 'Asia/Ho_Chi_Minh', start: hm(cfg.tiktokViStart, '10:00'), end: hm(cfg.tiktokViEnd, '22:00') },\n};\nconst slotTime = (lang, queue) => {\n  const w = WIN[lang] || WIN.en;\n  const now = DateTime.now().setZone(w.tz);\n  let day = now.startOf('day');\n  if (day.set(w.start) < now.plus({ minutes: 20 })) day = day.plus({ days: 1 });\n  // ngày đã có lịch của lần chạy khác (vd. bấm Execute 2 lần) → dời sang ngày sau, tránh đăng trùng giờ\n  const taken = (d) => queue.some((q) => q.lang === lang && q.runId !== runId && q.day === d.toISODate());\n  for (let k = 0; k < 14 && taken(day); k++) day = day.plus({ days: 1 });\n  const start = day.set(w.start);\n  let end = day.set(w.end);\n  if (end <= start) end = end.plus({ days: 1 });\n  const step = total > 1 ? (end - start) / (total - 1) : 0;\n  const when = start.plus({ milliseconds: Math.round(step * Math.min(slot, total - 1)) }).startOf('minute');\n  return { when, day: day.toISODate() };\n};\n\ntry {\n  for (let attempt = 0; attempt < 3; attempt++) {\n    const ref = must(await gh('GET', '/git/ref/heads/main'), 'GitHub ref');\n    const head = must(await gh('GET', '/git/commits/' + ref.object.sha), 'GitHub commit');\n    const entries = [];\n    const urls = {}; // folder → [url ảnh theo thứ tự slide]\n    for (let i = 0; i < items.length; i++) {\n      const s = items[i].json;\n      if (!items[i].binary || !items[i].binary.image) continue;\n      const buf = await this.helpers.getBinaryDataBuffer(i, 'image');\n      const blob = must(await gh('POST', '/git/blobs', { content: buf.toString('base64'), encoding: 'base64' }), 'GitHub blob');\n      const path = 'p/' + s.folder + '/' + s.file;\n      entries.push({ path, mode: '100644', type: 'blob', sha: blob.sha });\n      (urls[s.folder] = urls[s.folder] || [])[s.slide - 1] = PAGES + path;\n    }\n    // xoá ảnh bài cũ (p/<yyyy-mm-dd>_…) để repo không phình to\n    const tree = (await gh('GET', '/git/trees/' + head.tree.sha + '?recursive=1')).body || {};\n    const cutoff = new Date(Date.now() - KEEP_DAYS * 86400000).toISOString().slice(0, 10);\n    for (const t of tree.tree || []) {\n      const m = t.type === 'blob' && t.path.match(/^p\\/(\\d{4}-\\d{2}-\\d{2})/);\n      if (m && m[1] < cutoff) entries.push({ path: t.path, mode: '100644', type: 'blob', sha: null });\n    }\n    let queue = null;\n    if (SCHEDULE) {\n      queue = (await readQueue()).queue.filter((q) => !(q.status !== 'queued' && Date.now() - q.due > KEEP_DAYS * 86400000));\n      for (const p of story.posts) {\n        const photos = (urls[p.folder] || []).filter(Boolean);\n        if (!photos.length) { results[p.folder] = 'error: không có ảnh'; continue; }\n        const { when, day } = slotTime(p.lang, queue);\n        queue = queue.filter((q) => q.folder !== p.folder);\n        queue.push({ folder: p.folder, lang: p.lang, runId, day, due: when.toMillis(), dueLocal: when.toFormat('yyyy-LL-dd HH:mm ZZZZ'),\n          title: String(p.slides[0] || story.title).slice(0, 90), captionText: p.captionText, photos, status: 'queued', attempts: 0 });\n        results[p.folder] = 'scheduled ' + when.toFormat('dd/LL HH:mm ZZZZ') + ' (giờ VN ' + when.setZone('Asia/Ho_Chi_Minh').toFormat('dd/LL HH:mm') + ')';\n      }\n      queue.sort((a, b) => a.due - b.due);\n      const qb = must(await gh('POST', '/git/blobs', { content: Buffer.from(JSON.stringify(queue, null, 1)).toString('base64'), encoding: 'base64' }), 'GitHub queue blob');\n      entries.push({ path: 'queue.json', mode: '100644', type: 'blob', sha: qb.sha });\n    }\n    const newTree = must(await gh('POST', '/git/trees', { base_tree: head.tree.sha, tree: entries }), 'GitHub tree');\n    const commit = must(await gh('POST', '/git/commits', { message: 'TikTok slides: ' + story.title.slice(0, 60), tree: newTree.sha, parents: [ref.object.sha] }), 'GitHub new commit');\n    const upd = await gh('PATCH', '/git/refs/heads/main', { sha: commit.sha });\n    if (upd.status === 422 && attempt < 2) { for (const k of Object.keys(results)) delete results[k]; await sleep(3000); continue; } // repo vừa đổi (node hẹn giờ ghi queue) → làm lại\n    must(upd, 'GitHub update ref');\n\n    if (!SCHEDULE) {\n      // gửi ngay: chờ GitHub Pages đăng xong ảnh cuối rồi gọi TikTok\n      const last = Object.values(urls).flat().pop();\n      let live = false;\n      for (let t = 0; t < 24 && !live; t++) {\n        await sleep(5000);\n        const r = await http({ method: 'GET', url: last + '?v=' + commit.sha.slice(0, 7), json: false, encoding: 'arraybuffer', timeout: 15000 }).catch(() => ({ status: 0 }));\n        live = r.status === 200;\n      }\n      if (!live) throw new Error('GitHub Pages chưa đăng ảnh sau 2 phút: ' + last);\n      const access = await tiktokAccess();\n      for (const p of story.posts) {\n        const photos = (urls[p.folder] || []).filter(Boolean);\n        results[p.folder] = photos.length ? await tiktokPost(access, { title: String(p.slides[0] || story.title), captionText: p.captionText, photos }) : 'error: không có ảnh';\n      }\n    }\n    break;\n  }\n} catch (e) {\n  for (const p of story.posts) if (!results[p.folder]) results[p.folder] = 'error: ' + e.message;\n}\nreturn finish();\n"
+      },
+      "id": "7b3fdd17-21b8-4eef-b77f-0e2759b7fe47",
+      "name": "Publish to TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "22dce0a6-2aff-4105-8bc5-96c8ff82dbbb",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9d7116ac-889b-492b-bd0a-2028319d3039",
+              "leftValue": "={{ $('Every 15 minutes').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d2d55aed-0fc4-4548-8595-91c84bab2da3",
+      "name": "Scheduler run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chạy mỗi 15 phút: gửi lên TikTok các bài trong queue.json (repo GitHub Pages) đã đến giờ.\n// Mỗi ngôn ngữ tối đa 1 bài / lần chạy để bài không dồn cục khi máy vừa thức dậy; lỗi thì thử lại tối đa 3 lần.\nconst cfg = $('Config').first().json;\n// ---- dùng chung với node \"Publish to TikTok\" ----\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst filled = (v) => { const s = String(v || '').trim(); return s && !/PASTE|YOUR_/i.test(s) ? s : ''; };\nconst GH_TOKEN = filled(cfg.githubToken), REPO = String(cfg.githubRepo || '').trim();\nconst PAGES = String(cfg.pagesBaseUrl || '').replace(/\\/*$/, '/');\nconst CK = filled(cfg.tiktokClientKey), CS = filled(cfg.tiktokClientSecret), RT = filled(cfg.tiktokRefreshToken);\nconst MODE = String(cfg.tiktokPostMode || 'inbox').toLowerCase() === 'direct' ? 'DIRECT_POST' : 'MEDIA_UPLOAD';\nconst missing = [!GH_TOKEN && 'githubToken', !REPO && 'githubRepo', !CK && 'tiktokClientKey', !CS && 'tiktokClientSecret', !RT && 'tiktokRefreshToken'].filter(Boolean);\n\nconst http = async (opts) => {\n  const res = await this.helpers.httpRequest({ json: true, timeout: 60000, ignoreHttpStatusErrors: true, returnFullResponse: true, ...opts });\n  return { status: res.statusCode, body: res.body };\n};\nconst gh = (method, path, body) => http({\n  method, url: 'https://api.github.com/repos/' + REPO + path, body,\n  headers: { Authorization: 'Bearer ' + GH_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'n8n-vegan-tiktok', 'X-GitHub-Api-Version': '2022-11-28' },\n});\nconst must = (r, what) => { if (r.status >= 300) throw new Error(what + ' → HTTP ' + r.status + ' ' + JSON.stringify(r.body).slice(0, 200)); return r.body; };\n\n// hàng đợi hẹn giờ = file queue.json trong repo (n8n không lưu static data khi chạy tay, nên không dùng static data)\nconst readQueue = async () => {\n  const r = await gh('GET', '/contents/queue.json?ref=main');\n  if (r.status === 404) return { queue: [], sha: null };\n  const b = must(r, 'GitHub queue.json');\n  return { queue: JSON.parse(Buffer.from(b.content, 'base64').toString('utf8') || '[]'), sha: b.sha };\n};\n\nconst tiktokAccess = async () => {\n  const tok = await http({\n    method: 'POST', url: 'https://open.tiktokapis.com/v2/oauth/token/', json: false,\n    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },\n    body: 'client_key=' + encodeURIComponent(CK) + '&client_secret=' + encodeURIComponent(CS) + '&grant_type=refresh_token&refresh_token=' + encodeURIComponent(RT),\n  });\n  try { if (typeof tok.body === 'string') tok.body = JSON.parse(tok.body); } catch (e) { /* để nguyên */ }\n  if (!tok.body || !tok.body.access_token) throw new Error('TikTok refresh token lỗi: ' + JSON.stringify(tok.body).slice(0, 200) + ' — kết nối lại tài khoản TikTok');\n  return tok.body.access_token;\n};\n// gửi 1 bài ảnh (ảnh đã nằm trên GitHub Pages) → trạng thái dễ đọc\nconst tiktokPost = async (access, { title, captionText, photos }) => {\n  const tt = (path, body) => http({ method: 'POST', url: 'https://open.tiktokapis.com' + path, body, headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/json; charset=UTF-8' } });\n  const body = {\n    media_type: 'PHOTO', post_mode: MODE,\n    post_info: MODE === 'DIRECT_POST'\n      ? { title: title.slice(0, 90), description: captionText.slice(0, 4000), privacy_level: String(cfg.tiktokPrivacy || 'SELF_ONLY'), disable_comment: false, auto_add_music: true }\n      : { title: title.slice(0, 90), description: captionText.slice(0, 4000) },\n    source_info: { source: 'PULL_FROM_URL', photo_cover_index: 0, photo_images: photos },\n  };\n  const init = await tt('/v2/post/publish/content/init/', body);\n  const pid = init.body && init.body.data && init.body.data.publish_id;\n  if (!pid) return 'error: ' + JSON.stringify((init.body && init.body.error) || init.body).slice(0, 200);\n  let st = 'PROCESSING';\n  for (let t = 0; t < 8 && /PROCESSING|DOWNLOAD|UPLOAD/.test(st); t++) {\n    await sleep(4000);\n    const s = await tt('/v2/post/publish/status/fetch/', { publish_id: pid });\n    const d = (s.body && s.body.data) || {};\n    st = d.status || st;\n    if (st === 'FAILED') st = 'error: FAILED ' + (d.fail_reason || '');\n  }\n  return st === 'SEND_TO_USER_INBOX' ? 'inbox (vào hộp nháp TikTok)' : st === 'PUBLISH_COMPLETE' ? 'published' : st;\n};\nif (missing.length) return [{ json: { skipped: 'chưa có ' + missing.join(', ') + ' trong Config' } }];\n\nconst sent = [];\nfor (let attempt = 0; attempt < 3; attempt++) {\n  const { queue, sha } = await readQueue();\n  const now = Date.now();\n  const due = [];\n  for (const lang of ['en', 'vi']) {\n    const q = queue.find((x) => x.lang === lang && x.status === 'queued' && x.due <= now);\n    if (q) due.push(q);\n  }\n  if (!due.length) return [{ json: { nothingDue: true, queued: queue.filter((x) => x.status === 'queued').map((x) => x.dueLocal + ' — ' + x.folder) } }];\n  const access = await tiktokAccess();\n  for (const q of due) {\n    const st = await tiktokPost(access, q);\n    q.attempts = (q.attempts || 0) + 1;\n    q.result = st;\n    q.sentAt = new Date().toISOString();\n    q.status = /^error/.test(st) ? (q.attempts >= 3 ? 'failed' : 'queued') : 'sent';\n    if (q.status === 'queued') q.due = now + 30 * 60000; // lỗi → thử lại sau 30 phút\n    sent.push(q.folder + ' → ' + st);\n  }\n  const put = await gh('PUT', '/contents/queue.json', {\n    message: 'TikTok queue: sent ' + due.map((q) => q.folder).join(', ').slice(0, 120),\n    content: Buffer.from(JSON.stringify(queue, null, 1)).toString('base64'), sha, branch: 'main',\n  });\n  if (put.status === 409 || put.status === 422) { // queue.json vừa bị node khác ghi → đọc lại, chỉ cập nhật trạng thái các bài vừa gửi\n    const fresh = await readQueue();\n    for (const q of due) { const f = fresh.queue.find((x) => x.folder === q.folder); if (f) Object.assign(f, { status: q.status, result: q.result, sentAt: q.sentAt, attempts: q.attempts, due: q.due }); }\n    must(await gh('PUT', '/contents/queue.json', { message: 'TikTok queue: sent (retry)', content: Buffer.from(JSON.stringify(fresh.queue, null, 1)).toString('base64'), sha: fresh.sha, branch: 'main' }), 'GitHub queue.json');\n  } else must(put, 'GitHub queue.json');\n  break;\n}\nreturn [{ json: { sent } }];\n"
+      },
+      "id": "0040c620-5cf1-44d2-9918-41f759fa728b",
+      "name": "Publish due TikTok posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        560
       ]
     }
   ],
@@ -625,7 +801,7 @@
       "main": [
         [
           {
-            "node": "RSS feed list",
+            "node": "Scheduler run?",
             "type": "main",
             "index": 0
           }
@@ -738,7 +914,7 @@
       "main": [
         [
           {
-            "node": "Build output files",
+            "node": "Publish to TikTok",
             "type": "main",
             "index": 0
           }
@@ -779,6 +955,46 @@
         [
           {
             "node": "Loop over articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to TikTok": {
+      "main": [
+        [
+          {
+            "node": "Build output files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 15 minutes": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduler run?": {
+      "main": [
+        [
+          {
+            "node": "Publish due TikTok posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RSS feed list",
             "type": "main",
             "index": 0
           }

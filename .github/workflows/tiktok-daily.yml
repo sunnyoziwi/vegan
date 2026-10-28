@@ -22,6 +22,12 @@ jobs:
       - name: Chạy workflow n8n
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # đẩy ảnh lên repo vegan-legal (GitHub Pages) + xếp lịch TikTok vào queue.json;
+          # repo vegan-legal tự gửi bài đến giờ (workflow "Publish due TikTok posts" mỗi 15 phút)
+          GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
         run: bash ci/run-workflow.sh tiktok
 
       - name: Lưu danh sách bài đã làm
