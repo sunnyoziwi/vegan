@@ -1,0 +1,24 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      # cho phép node "Read/Write Files" ghi vào 2 thư mục output (n8n 2.x mặc định chặn)
+      - N8N_RESTRICT_FILE_ACCESS_TO=/files/output;/files/tiktok_output
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      - TZ=Asia/Ho_Chi_Minh
+      - N8N_SECURE_COOKIE=false
+      # bật node "Execute Command" (n8n 2.x mặc định tắt) — workflow TikTok dùng để tạo thư mục cho từng bài
+      - 'NODES_EXCLUDE=["n8n-nodes-base.localFileTrigger"]'
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+      # ảnh .png + caption .txt xuất hiện ở thư mục ./output cạnh file này
+      - ./output:/files/output
+      # bài TikTok: mỗi bài một thư mục (ảnh + caption.txt)
+      - ./tiktok_output:/files/tiktok_output
+    restart: unless-stopped
+
+volumes:
+  n8n_data:

@@ -1,0 +1,832 @@
+{
+  "name": "Vegan & Healthy → Facebook posts (RSS + Gemini)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Vegan & Healthy → Facebook (RSS + Gemini)\nMỗi lần chạy: đọc RSS của 5 chủ đề vegan (mindset, lifestyle, vibes, recipe, animal rights) → chọn bài mới nhất chưa đăng → lấy ảnh gốc của bài → Gemini viết tiêu đề trên ảnh + caption Facebook → ghép chữ lên ảnh → **hẹn giờ đăng lên Facebook Page** (chia đều 08:00–20:00 giờ Mỹ ET, ngày kế tiếp) → lưu **1 file .png + 1 file .txt** cho mỗi bài vào thư mục `output`.\n\n**Cài đặt**\n1. API key Gemini nằm trong node **Config** (`geminiApiKey`).\n2. compose.yaml phải mount `./output:/files/output` và đặt `N8N_RESTRICT_FILE_ACCESS_TO=/files/output`, rồi `docker compose up -d`.\n3. Bấm **Execute workflow** để chạy thử. Muốn tự chạy hằng ngày thì bật Active (node Schedule: 16:00 giờ VN).\n\n**Về ảnh**: luôn dùng ảnh gốc của bài; node *Add text to image* ghép tên trang, nhãn NEWS và tiêu đề lên. Bài không có ảnh → nền gradient theo màu chủ đề. Không dùng AI vẽ ảnh.\n**Sửa nguồn RSS / giọng văn**: node *RSS feed list*. **Sửa prompt caption**: node *Gemini: write captions*.\n**Facebook**: điền `fbPageId` + `fbPageToken` (Page access token, quyền pages_manage_posts) trong **Config**. Để trống token = chỉ lưu file, không đăng. Bài đã hẹn xem/sửa/xoá trong Meta Business Suite → Planner.",
+        "height": 400,
+        "width": 560,
+        "color": 5
+      },
+      "id": "80ec05e2-ae90-4d4f-b4cb-83edcf04b4a4",
+      "name": "Hướng dẫn",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -520
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "03223352-6eea-4f3c-9fc8-209990f1d6ec",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 16
+            }
+          ]
+        }
+      },
+      "id": "6dc1dd7b-1223-4fdc-8164-898aef1b6b9c",
+      "name": "Every day 16:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "44975c46-4ad0-4cf9-959a-20b13610640f",
+              "name": "geminiApiKey",
+              "value": "PASTE_IN_GITHUB_SECRETS",
+              "type": "string"
+            },
+            {
+              "id": "4dbe9b9f-89e1-41e2-938b-9537328284fc",
+              "name": "geminiBaseUrl",
+              "value": "https://generativelanguage.googleapis.com",
+              "type": "string"
+            },
+            {
+              "id": "ee92e439-cfc2-439f-942c-82ca5f3b201d",
+              "name": "textModels",
+              "value": "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.6-flash,gemini-3.5-flash",
+              "type": "string"
+            },
+            {
+              "id": "f981dd3e-1370-492a-9ecd-2199a7cbb234",
+              "name": "photoCheck",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "40afc20b-4324-484b-bf79-42bb976a2ea6",
+              "name": "captionLanguage",
+              "value": "English",
+              "type": "string"
+            },
+            {
+              "id": "c9ff183b-3d6a-4d15-bb95-95f93ba7a0a6",
+              "name": "brandName",
+              "value": "VEGANISM",
+              "type": "string"
+            },
+            {
+              "id": "d306ada1-6fdd-42e9-b516-4b67baf8fb9b",
+              "name": "labelText",
+              "value": "NEWS",
+              "type": "string"
+            },
+            {
+              "id": "0fc96b0c-d762-4300-a1d6-5806d9cc9462",
+              "name": "outputDir",
+              "value": "/files/output",
+              "type": "string"
+            },
+            {
+              "id": "83da1f12-b1e1-4348-985a-54d1b1d5570d",
+              "name": "postsPerTopic",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "57ce714b-8513-4a83-9ed9-489f6e26e7ba",
+              "name": "maxPosts",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "cf1e3ee1-e924-41ee-b64e-ecc8bc61a312",
+              "name": "maxAgeDays",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "e4c5e972-2d8f-440c-98c1-371996181418",
+              "name": "fbPageId",
+              "value": "604213449441581",
+              "type": "string"
+            },
+            {
+              "id": "8b434d57-7a14-46af-853c-98b34cf74d93",
+              "name": "fbPageToken",
+              "value": "PASTE_IN_GITHUB_SECRETS",
+              "type": "string"
+            },
+            {
+              "id": "af9db707-ec8c-4e67-bcec-da224017fea0",
+              "name": "fbTimezone",
+              "value": "America/New_York",
+              "type": "string"
+            },
+            {
+              "id": "c4779bff-10b8-4c02-9b6e-9dfe8cd1261c",
+              "name": "fbStartTime",
+              "value": "08:00",
+              "type": "string"
+            },
+            {
+              "id": "7c9e6834-9d5b-416a-84f0-2fa01054cf26",
+              "name": "fbEndTime",
+              "value": "20:00",
+              "type": "string"
+            },
+            {
+              "id": "549242ab-ba0e-429a-8ec1-2f79104eca58",
+              "name": "fbGraphVersion",
+              "value": "v24.0",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c6122f35-9374-4421-baaf-6173671581db",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ✏️ Danh sách nguồn RSS theo chủ đề — chỉ 5 chủ đề vegan. Thêm / bớt feed tùy ý.\n//   include (tuỳ chọn) = regex; bài phải khớp (tiêu đề + tóm tắt) mới được lấy — dùng cho nguồn tin chung để chỉ giữ bài về vegan / động vật.\n//   guide   = hướng dẫn giọng văn gửi cho Gemini.   colors = màu nền dự phòng khi bài không có ảnh.\nconst VEGAN_ANIMAL = 'vegan|plant-based|plant based|meat-free|dairy-free|animal|sanctuary|wildlife';\nconst ANIMAL_WIN = 'win|victory|ban\\\\b|commit|celebrat|success|rescue|sanctuary|adopt|freed|plant-based';\n\nconst TOPICS = [\n  {\n    id: 'vegan-mindset',\n    label: 'Vegan mindset',\n    guide: 'The vegan mindset: ethics, compassion for animals, motivation, staying vegan, handling social situations, the psychology of change. Thoughtful, encouraging, never preachy or shaming.',\n    colors: ['#312e81', '#6366f1'],\n    feeds: [\n      { url: 'https://www.theguardian.com/lifeandstyle/veganism/rss' },\n      { url: 'https://www.ourhenhouse.org/feed/' },\n      { url: 'https://www.vegansociety.com/rss.xml' },\n    ],\n  },\n  {\n    id: 'vegan-lifestyle',\n    label: 'Vegan lifestyle',\n    guide: 'Everyday vegan living: food, products, fashion, travel, restaurants, tips for going and staying vegan. Practical, friendly, one clear takeaway.',\n    colors: ['#14532d', '#16a34a'],\n    feeds: [\n      { url: 'https://plantbasednews.org/feed/' },\n      { url: 'https://www.veganfoodandliving.com/feed/' },\n      { url: 'https://veganuary.com/feed/' },\n    ],\n  },\n  {\n    id: 'vegan-vibes',\n    label: 'Vegan vibes',\n    guide: 'Uplifting vegan good news: wins for animals, new vegan launches, growth of plant-based eating, rescues and sanctuaries. Joyful, hopeful, celebratory.',\n    colors: ['#a16207', '#facc15'],\n    feeds: [\n      { url: 'https://plantbasednews.org/feed/' },\n      { url: 'https://www.veganfoodandliving.com/feed/' },\n      { url: 'https://mercyforanimals.org/feed/', include: ANIMAL_WIN },\n      { url: 'https://www.goodnewsnetwork.org/feed/', include: VEGAN_ANIMAL },\n    ],\n  },\n  {\n    id: 'vegan-recipe',\n    label: 'Vegan recipe',\n    guide: 'A vegan recipe. Mouth-watering, simple; mention the key ingredients and one thing that makes it special; invite readers to save and try it.',\n    colors: ['#9a3412', '#f59e0b'],\n    feeds: [\n      { url: 'https://www.veganricha.com/feed/' },\n      { url: 'https://veganheaven.org/feed/' },\n      { url: 'https://thefullhelping.com/feed/' },\n      { url: 'https://minimalistbaker.com/feed/' },\n    ],\n  },\n  {\n    id: 'animal-rights',\n    label: 'Animal rights',\n    guide: 'Animal-rights news: factory farming, cruelty investigations, laws, campaigns, sanctuaries. Honest but WITHOUT graphic detail; factual and compassionate, no insults; end with a constructive action (support rescues, choose cruelty-free, speak up).',\n    colors: ['#7f1d1d', '#dc2626'],\n    feeds: [\n      { url: 'https://sentientmedia.org/feed/' },\n      { url: 'https://mercyforanimals.org/feed/' },\n      { url: 'https://www.farmsanctuary.org/feed/' },\n      { url: 'https://animalequality.org/feed/' },\n    ],\n  },\n];\n\nreturn TOPICS.flatMap((t) =>\n  t.feeds.map((f) => ({\n    json: { topic: t.id, label: t.label, guide: t.guide, colors: t.colors, url: f.url, include: f.include || '' },\n  })),\n);\n"
+      },
+      "id": "733e002f-052d-4b97-95e2-887ee243e11d",
+      "name": "RSS feed list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Đọc tất cả feed song song, chọn bài MỚI NHẤT mỗi chủ đề (bỏ bài đã đăng), tìm & tải ảnh gốc của bài.\nconst cfg = $('Config').first().json;\nconst feeds = $input.all().map((i) => i.json);\nconst UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';\nconst MAX_AGE_MS = Number(cfg.maxAgeDays || 14) * 86400000;\nconst PER_TOPIC = Number(cfg.postsPerTopic || 1);\nconst MAX_POSTS = Number(cfg.maxPosts || 12);\nconst now = Date.now();\n\nlet seen = {};\ntry { seen = $getWorkflowStaticData('global').seen || {}; } catch (e) { /* static data unavailable */ }\n\n// ---------- helpers ----------\nconst ENT = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…', ndash: '–', mdash: '—' };\nconst decode = (s) =>\n  String(s || '').replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (m, e) => {\n    if (e[0] === '#') {\n      const c = e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);\n      try { return String.fromCodePoint(c); } catch (x) { return m; }\n    }\n    return ENT[e.toLowerCase()] ?? m;\n  });\nconst stripHtml = (h) =>\n  decode(String(h || '').replace(/<(script|style)[\\s\\S]*?<\\/\\1>/gi, ' ').replace(/<[^>]+>/g, ' ')).replace(/\\s+/g, ' ').trim();\nconst inner = (block, name) => {\n  const m = block.match(new RegExp('<' + name + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</' + name + '>', 'i'));\n  if (!m) return '';\n  const v = m[1].trim();\n  const cd = v.match(/^<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>$/);\n  return cd ? cd[1].trim() : decode(v);\n};\nconst attrs = (s) => {\n  const o = {};\n  for (const m of s.matchAll(/([\\w:-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')/g)) o[m[1].toLowerCase()] = decode(m[2] ?? m[3]);\n  return o;\n};\n// (sandbox của Code node không có global URL nên tự xử lý chuỗi)\nconst hostOf = (u) => { const m = String(u).match(/^https?:\\/\\/([^/?#:]+)/i); return m ? m[1].replace(/^www\\./i, '') : ''; };\nconst absUrl = (u, base) => {\n  u = String(u || '').trim();\n  if (/^https?:\\/\\//i.test(u)) return u;\n  const b = String(base || '');\n  const origin = (b.match(/^(https?:\\/\\/[^/?#]+)/i) || [])[1];\n  if (!origin) return '';\n  if (u.startsWith('//')) return 'https:' + u;\n  if (u.startsWith('/')) return origin + u;\n  return b.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + u;\n};\nconst BAD_IMG = /(gravatar|pixel|tracking|spacer|blank\\.|emoji|1x1|\\.gif(\\?|$)|\\.svg(\\?|$)|\\/logo|avatar|badge|favicon|doubleclick|feedburner)/i;\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst toBuf = (b) => {\n  if (Buffer.isBuffer(b)) return b;\n  if (b && b.type === 'Buffer' && Array.isArray(b.data)) return Buffer.from(b.data);\n  if (b instanceof ArrayBuffer) return Buffer.from(b);\n  if (b && b.buffer instanceof ArrayBuffer) return Buffer.from(b.buffer, b.byteOffset, b.byteLength);\n  return null;\n};\nconst sniff = (b) => {\n  if (!b || b.length < 12) return null;\n  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';\n  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';\n  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';\n  return null;\n};\nconst normKey = (link) => {\n  const [path, query = ''] = String(link).replace(/#.*$/, '').replace(/^https?:\\/\\/(www\\.)?/i, '').split('?');\n  const q = query.split('&').filter((p) => p && !/^(utm_|fbclid|ref=|source=|at_)/i.test(p)).join('&');\n  return (path.replace(/\\/+$/, '') + (q ? '?' + q : '')).toLowerCase();\n};\nconst titleKey = (t) => String(t).toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();\n\n// ---------- parse one feed ----------\nfunction parseFeed(xml, feed) {\n  const out = [];\n  for (const m of xml.matchAll(/<(item|entry)[\\s>][\\s\\S]*?<\\/\\1>/gi)) {\n    const block = m[0];\n    const title = stripHtml(inner(block, 'title'));\n    let link = stripHtml(inner(block, 'link'));\n    if (!link) {\n      const links = [...block.matchAll(/<link\\b([^>]*)\\/?>/gi)].map((x) => attrs(x[1]));\n      const alt = links.find((l) => l.href && (!l.rel || l.rel === 'alternate')) || links.find((l) => l.href);\n      link = alt ? alt.href : '';\n    }\n    if (!link) { const g = inner(block, 'guid'); if (/^https?:/i.test(g)) link = g; }\n    if (!title || !/^https?:/i.test(link)) continue;\n    const dateStr = inner(block, 'pubDate') || inner(block, 'published') || inner(block, 'updated') || inner(block, 'dc:date');\n    const date = Date.parse(dateStr);\n    const htmlBody = inner(block, 'content:encoded') || inner(block, 'content') || inner(block, 'description') || inner(block, 'summary');\n    const descr = stripHtml(inner(block, 'description') || inner(block, 'summary'));\n    const full = stripHtml(htmlBody);\n    const summary = (full.length > descr.length ? full : descr).slice(0, 2200);\n\n    // image candidates: media:content / thumbnail / enclosure, then <img> inside the body\n    const media = [];\n    for (const t of block.matchAll(/<(media:content|media:thumbnail|enclosure|itunes:image)\\b([^>]*)>/gi)) {\n      const a = attrs(t[2]);\n      const u = a.url || a.href;\n      if (!u) continue;\n      const kind = (a.type || a.medium || '').toLowerCase();\n      const isImg = kind.startsWith('image') || (!kind && /\\.(jpe?g|png|webp)(\\?|$)/i.test(u)) || /thumbnail|itunes:image/i.test(t[1]);\n      if (!isImg || BAD_IMG.test(u)) continue;\n      media.push({ u: absUrl(u, link), w: Number(a.width) || 0 });\n    }\n    media.sort((x, y) => y.w - x.w);\n    const inline = [];\n    for (const t of htmlBody.matchAll(/<img\\b([^>]*)>/gi)) {\n      const a = attrs(t[1]);\n      let u = a['data-src'] || a['data-lazy-src'] || a['data-orig-file'] || '';\n      if (!u && a.srcset) u = a.srcset.split(',').pop().trim().split(/\\s+/)[0];\n      if (!u) u = a.src || '';\n      if (!u || /^data:/i.test(u) || BAD_IMG.test(u)) continue;\n      if (Number(a.width) && Number(a.width) < 200) continue;\n      inline.push(absUrl(u, link));\n    }\n    const images = [...new Set([...media.map((x) => x.u), ...inline].filter(Boolean))].slice(0, 4);\n\n    out.push({\n      topic: feed.topic, label: feed.label, guide: feed.guide, colors: feed.colors,\n      title, link, date, summary, images,\n      source: hostOf(link),\n    });\n  }\n  return out;\n}\n\n// ---------- 1) fetch all feeds in parallel ----------\nconst feedErrors = [];\nconst fetched = await Promise.all(\n  feeds.map(async (f) => {\n    try {\n      const res = await this.helpers.httpRequest({\n        method: 'GET', url: f.url, timeout: 25000, encoding: 'text', returnFullResponse: true, ignoreHttpStatusErrors: true,\n        headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },\n      });\n      if (res.statusCode >= 400) throw new Error('HTTP ' + res.statusCode);\n      let items = parseFeed(String(res.body), f);\n      if (f.include) { const re = new RegExp(f.include, 'i'); items = items.filter((a) => re.test(a.title + ' ' + a.summary)); }\n      return items;\n    } catch (e) {\n      feedErrors.push(f.url + ' → ' + String(e.message).slice(0, 80));\n      return [];\n    }\n  }),\n);\nif (!fetched.some((x) => x.length) && feedErrors.length === feeds.length) {\n  throw new Error('Không đọc được feed nào (kiểm tra mạng của container). Ví dụ: ' + feedErrors.slice(0, 3).join(' | '));\n}\n\n// ---------- 2) pick the freshest unseen article per topic ----------\nconst byTopic = new Map();\nfor (const f of feeds) if (!byTopic.has(f.topic)) byTopic.set(f.topic, []);\nfetched.flat().forEach((a) => byTopic.get(a.topic).push(a));\nconst topicIds = [...byTopic.keys()];\nconst rot = Math.floor(now / 86400000) % topicIds.length; // xoay vòng để chủ đề cuối không bị cắt khi MAX_POSTS nhỏ\nconst order = [...topicIds.slice(rot), ...topicIds.slice(0, rot)];\n\nconst usedKeys = new Set();\nconst usedTitles = new Set();\n// lấy xen kẽ từng vòng (chủ đề 1, 2, …, 5, rồi lại 1, 2, …) để 2 bài cùng chủ đề không đăng liền nhau\nconst picks = [];\nfor (let round = 0; round < PER_TOPIC; round++) {\n  for (const topic of order) {\n    const a = byTopic.get(topic)\n      .filter((a) => a.date && a.date <= now + 86400000 && now - a.date <= MAX_AGE_MS)\n      .filter((a) => !seen[normKey(a.link)] && !usedKeys.has(normKey(a.link)) && !usedTitles.has(titleKey(a.title)))\n      .sort((a, b) => b.date - a.date)[0];\n    if (!a) continue;\n    usedKeys.add(normKey(a.link));\n    usedTitles.add(titleKey(a.title));\n    picks.push(a);\n  }\n}\nconst chosen = picks.slice(0, MAX_POSTS);\n\n// ---------- 3) find + download the article photo ----------\nconst download = async (url, referer) => {\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'GET', url, timeout: 25000, encoding: 'arraybuffer', returnFullResponse: true, ignoreHttpStatusErrors: true,\n      headers: { 'User-Agent': UA, Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8', Referer: referer },\n    });\n    if (res.statusCode >= 400) return null;\n    const buf = toBuf(res.body);\n    const mime = sniff(buf);\n    if (!mime || buf.length < 15000 || buf.length > 9 * 1024 * 1024) return null;\n    const size = imageSize(buf) || { w: 800, h: 800 };\n    return { buf, mime, w: size.w, h: size.h };\n  } catch (e) { return null; }\n};\n// kích thước thật của ảnh (PNG / JPEG / WebP) — để loại ảnh thumbnail nhỏ, phóng lên sẽ bị mờ\nconst imageSize = (b) => {\n  try {\n    if (b[0] === 0x89 && b[1] === 0x50) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };\n    if (b[0] === 0xff && b[1] === 0xd8) {\n      let o = 2;\n      while (o < b.length - 9) {\n        if (b[o] !== 0xff) { o++; continue; }\n        const m = b[o + 1];\n        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7) || m === 0xff) { o += m === 0xff ? 1 : 2; continue; }\n        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: b.readUInt16BE(o + 5), w: b.readUInt16BE(o + 7) };\n        o += 2 + b.readUInt16BE(o + 2);\n      }\n    }\n    if (b.toString('latin1', 0, 4) === 'RIFF') {\n      const t = b.toString('latin1', 12, 16);\n      if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };\n      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }\n      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };\n    }\n  } catch (e) { /* ignore */ }\n  return null;\n};\nconst ogImage = async (page) => {\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'GET', url: page, timeout: 20000, encoding: 'text', returnFullResponse: true, ignoreHttpStatusErrors: true,\n      headers: { 'User-Agent': UA, Accept: 'text/html,*/*' },\n    });\n    if (res.statusCode >= 400) return '';\n    const html = String(res.body).slice(0, 400000);\n    for (const t of html.matchAll(/<meta\\b([^>]*)>/gi)) {\n      const a = attrs(t[1]);\n      const k = (a.property || a.name || '').toLowerCase();\n      if ((k === 'og:image' || k === 'og:image:url' || k === 'twitter:image' || k === 'twitter:image:src') && a.content) return absUrl(a.content, page);\n    }\n  } catch (e) { /* ignore */ }\n  return '';\n};\n\nconst out = [];\nfor (const a of chosen) {\n  // Lấy ảnh lớn nhất tìm được. Ảnh nhỏ hơn MIN_W bị bỏ (phóng lên 1080px sẽ quá mờ) → workflow dùng nền gradient.\n  const MIN_W = 500, GOOD_W = 1000;\n  // WordPress hay đặt hậu tố kích thước (vd. -150x225.jpg): bỏ đi sẽ ra ảnh gốc\n  const variants = (u) => { const s = u.replace(/-\\d{2,4}x\\d{2,4}(\\.(?:jpe?g|png|webp))(\\?.*)?$/i, '$1$2'); return s !== u ? [s, u] : [u]; };\n  let img = null, imgUrl = '';\n  const consider = async (u) => {\n    const d = await download(u, a.link);\n    if (d && (!img || d.w * d.h > img.w * img.h)) { img = d; imgUrl = u; }\n  };\n  for (const u of a.images.flatMap(variants)) { await consider(u); if (img && img.w >= GOOD_W) break; }\n  if (!img || img.w < GOOD_W) {\n    const og = await ogImage(a.link);\n    if (og && !BAD_IMG.test(og)) await consider(og);\n  }\n  if (img && img.w < MIN_W) { img = null; imgUrl = ''; }\n  const json = {\n    topic: a.topic, label: a.label, guide: a.guide, colors: a.colors,\n    title: a.title, link: a.link, source: a.source, pubDate: new Date(a.date).toISOString(), summary: a.summary,\n    seenKey: normKey(a.link), imageUrl: imgUrl, imageWidth: img ? img.w : 0, hasPhoto: !!img,\n  };\n  const item = { json };\n  if (img) {\n    const ext = img.mime === 'image/png' ? 'png' : img.mime === 'image/webp' ? 'webp' : 'jpg';\n    item.binary = { source: await this.helpers.prepareBinaryData(img.buf, 'source.' + ext, img.mime) };\n  }\n  out.push(item);\n}\nif (feedErrors.length) console.log('Feeds lỗi (' + feedErrors.length + '): ' + feedErrors.join(' ; '));\nconsole.log('Chọn ' + out.length + ' bài, ' + out.filter((o) => o.json.hasPhoto).length + ' bài có ảnh gốc.');\nreturn out;\n"
+      },
+      "id": "afd6e4b3-aed9-4ebf-8b36-3283804637a1",
+      "name": "Fetch RSS & pick articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "748fcfdf-d5df-4624-b33b-3904c4e64a9d",
+      "name": "Loop over posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        960,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini viết: (1) câu chữ in trên ảnh, (2) caption đăng Facebook, (3) hashtag, \nconst cfg = $('Config').first().json;\nconst API_KEY = String(cfg.geminiApiKey || '').trim();\nif (!API_KEY || /PASTE|YOUR_/i.test(API_KEY)) throw new Error('Chưa có Gemini API key: điền vào node \"Config\" (geminiApiKey).');\nconst BASE = String(cfg.geminiBaseUrl || 'https://generativelanguage.googleapis.com').replace(/\\/+$/, '');\nconst csv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst LANGUAGE = String(cfg.captionLanguage || 'Vietnamese');\n\n// Gọi generateContent, tự thử lần lượt các model; tự chờ khi bị 429 tạm thời; báo \"quotaZero\" khi gói free không có hạn mức.\nconst callGemini = async (models, buildBody, opts = {}) => {\n  const started = Date.now();\n  const deadline = opts.deadlineMs || 200000;\n  let lastErr = null;\n  let allQuotaZero = true;\n  for (const model of models) {\n    for (let attempt = 0; attempt < 3; attempt++) {\n      if (Date.now() - started > deadline) break;\n      let res;\n      try {\n        res = await this.helpers.httpRequest({\n          method: 'POST',\n          url: BASE + '/v1beta/models/' + encodeURIComponent(model) + ':generateContent',\n          headers: { 'x-goog-api-key': API_KEY, 'Content-Type': 'application/json' },\n          body: buildBody(model), json: true, timeout: opts.timeout || 90000,\n          ignoreHttpStatusErrors: true, returnFullResponse: true,\n        });\n      } catch (e) {\n        lastErr = new Error(model + ': ' + e.message);\n        allQuotaZero = false;\n        await sleep(3000);\n        continue;\n      }\n      const status = res.statusCode;\n      const data = res.body;\n      if (status >= 200 && status < 300) return { model, data };\n      const msg = String((data && data.error && data.error.message) || JSON.stringify(data) || '').split('\\n')[0].slice(0, 220);\n      const full = String((data && data.error && data.error.message) || '');\n      lastErr = new Error(model + ' → HTTP ' + status + ': ' + msg);\n      if (status === 401 || status === 403 || (status === 400 && /API key/i.test(msg))) { lastErr.fatal = true; throw lastErr; }\n      if (status === 429) {\n        if (/limit:\\s*0\\b/.test(full)) break; // gói hiện tại không có hạn mức cho model này → thử model khác\n        allQuotaZero = false;\n        const det = ((data.error && data.error.details) || []).find((d) => d.retryDelay);\n        const wait = det ? parseFloat(det.retryDelay) : 12;\n        if (wait > 90) break; // hết hạn mức theo ngày → model khác\n        await sleep((wait + 1) * 1000);\n        continue;\n      }\n      allQuotaZero = false;\n      if (status >= 500) { await sleep(4000 * (attempt + 1)); continue; }\n      break; // 400 / 404 → model khác\n    }\n  }\n  const err = lastErr || new Error('Gemini request failed');\n  if (allQuotaZero) err.quotaZero = true;\n  throw err;\n};\n\n\nconst TEXT_MODELS = csv(cfg.textModels);\nconst SYSTEM = [\n  'You are the social-media editor of a Facebook page about compassionate, plant-based, healthy living.',\n  'Voice: warm, calm, hopeful and intelligent. Never preachy, shaming or sensational.',\n  'Rules: use ONLY facts that appear in the article excerpt; never invent statistics, quotes or names.',\n  'For health topics write \"research suggests\" / \"a study found\" and never promise cures or give medical advice.',\n  'Never describe graphic violence or gore. Do not insult people or brands. Credit the source by name.',\n  'Write every user-facing text in ' + LANGUAGE + ' (keep all diacritics correct). Use only real ' + LANGUAGE + ' words: never mix in words from any other language (except proper names and widely used English terms).',\n].join('\\n');\n\nconst extractJson = (text) => {\n  const t = String(text || '').trim().replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(t); } catch (e) { /* try to find an object inside */ }\n  const m = t.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { return JSON.parse(m[0]); } catch (e) { /* fallthrough */ } }\n  throw new Error('Gemini không trả về JSON hợp lệ: ' + t.slice(0, 120));\n};\n\nconst out = [];\nconst PHOTO_CHECK = cfg.photoCheck !== false && String(cfg.photoCheck).toLowerCase() !== 'false';\nconst allItems = $input.all();\nfor (let idx = 0; idx < allItems.length; idx++) {\n  const item = allItems[idx];\n  const j = item.json;\n  try {\n    let photo = null;\n    if (PHOTO_CHECK && item.binary && item.binary.source) {\n      const pb = await this.helpers.getBinaryDataBuffer(idx, 'source');\n      if (pb && pb.length < 6 * 1024 * 1024) photo = { mime: item.binary.source.mimeType || 'image/jpeg', b64: pb.toString('base64') };\n    }\n    const prompt = [\n      'TOPIC: ' + j.label,\n      'TOPIC GUIDE: ' + j.guide,\n      'SOURCE: ' + j.source,\n      'TITLE: ' + j.title,\n      'PUBLISHED: ' + j.pubDate,\n      'ARTICLE EXCERPT:',\n      j.summary || '(no excerpt available - rely on the title only and stay general)',\n      '',\n      'Return ONE JSON object with exactly these keys:',\n      '\"imageText\": a news-style headline to print ON the image, 8-16 words, natural sentence case, informative and engaging (like a Facebook news card), no emojis, no hashtags, no quotation marks, no website names or URLs, in ' + LANGUAGE + '.',\n      '\"fbCaption\": the Facebook post text in ' + LANGUAGE + ': a strong first-line hook, 2-4 short paragraphs (70-150 words in total), at most 3 emojis, and a closing question or gentle call to action. Do NOT include hashtags, the URL or a source line (they are added automatically). You may mention the source name naturally inside the text.',\n      '\"hashtags\": array of 5-8 relevant hashtags WITHOUT the # symbol, no spaces inside each one, in ' + LANGUAGE + '.',\n      ...(photo ? ['\"photoFits\": true or false. A photo from the article is attached. Answer true ONLY if it is sharp, looks professional and clearly illustrates the topic \"' + j.label + '\" and this story (for example plant-based food, plants, animals, nature, or the real subject of the article). Answer false if it is blurry, tiny, a screenshot, a logo, a chart, contains lots of text, shows mainly a person or a close-up face, or looks like generic stock imagery unrelated to the story.'] : []),\n    ].join('\\n');\n    const ask = (usePhoto) => callGemini(TEXT_MODELS, () => ({\n      systemInstruction: { parts: [{ text: SYSTEM }] },\n      contents: [{ role: 'user', parts: [{ text: prompt }, ...(usePhoto ? [{ inlineData: { mimeType: photo.mime, data: photo.b64 } }] : [])] }],\n      generationConfig: { responseMimeType: 'application/json' },\n    }), { timeout: 80000, deadlineMs: 200000 });\n    let res;\n    try { res = await ask(!!photo); } catch (e) { if (e.fatal || !photo) throw e; photo = null; res = await ask(false); }\n    const { model, data } = res;\n    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];\n    const text = parts.filter((p) => p.text && !p.thought).map((p) => p.text).join('');\n    const r = extractJson(text);\n    let imageText = String(r.imageText || '').replace(/[\"“”]/g, '').replace(/\\s+/g, ' ').trim();\n    imageText = imageText.charAt(0).toUpperCase() + imageText.slice(1);\n    const fbCaption = String(r.fbCaption || '').trim();\n    if (!imageText || !fbCaption) throw new Error('Gemini thiếu imageText/fbCaption');\n    const hashtags = (Array.isArray(r.hashtags) ? r.hashtags : String(r.hashtags || '').split(/[\\s,]+/))\n      .map((h) => String(h).replace(/^#+/, '').replace(/[^\\p{L}\\p{N}_]/gu, ''))\n      .filter(Boolean).slice(0, 8);\n    const keepPhoto = !photo || r.photoFits !== false;\n    out.push({\n      json: { ...j, imageText, fbCaption, hashtags, textModel: model, photoRejected: !keepPhoto, hasPhoto: keepPhoto && j.hasPhoto },\n      binary: keepPhoto ? item.binary : undefined,\n    });\n  } catch (e) {\n    if (e.fatal) throw new Error('Gemini từ chối API key: ' + e.message);\n    out.push({ json: { ...j, error: 'caption: ' + e.message }, binary: item.binary });\n  }\n}\nreturn out;\n"
+      },
+      "id": "88fb2a83-3b2a-4d7c-917c-56460a6574e6",
+      "name": "Gemini: write captions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tạo ảnh bài đăng từ ảnh gốc của bài (bài không có ảnh → nền gradient theo màu chủ đề), rồi node \"Add text to image\" ghép chữ lên.\nconst cfg = $('Config').first().json;\nconst BRAND = String(cfg.brandName || '').trim().toUpperCase() || ' ';\nconst TAG = () => String(cfg.labelText || 'NEWS').trim().toUpperCase() || 'NEWS';\n\n// ---- image utils ----\nconst sniff = (b) => {\n  if (!b || b.length < 12) return null;\n  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';\n  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';\n  if (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';\n  return null;\n};\nconst extOf = (mime) => (mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg');\nconst imageSize = (b) => {\n  try {\n    if (b[0] === 0x89 && b[1] === 0x50) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };\n    if (b[0] === 0xff && b[1] === 0xd8) {\n      let o = 2;\n      while (o < b.length - 9) {\n        if (b[o] !== 0xff) { o++; continue; }\n        const m = b[o + 1];\n        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7) || m === 0xff) { o += m === 0xff ? 1 : 2; continue; }\n        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: b.readUInt16BE(o + 5), w: b.readUInt16BE(o + 7) };\n        o += 2 + b.readUInt16BE(o + 2);\n      }\n    }\n    if (b.toString('latin1', 0, 4) === 'RIFF') {\n      const t = b.toString('latin1', 12, 16);\n      if (t === 'VP8 ') return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };\n      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }\n      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };\n    }\n  } catch (e) { /* ignore */ }\n  return null;\n};\n\n// 8x10 gradient PNG (không cần thư viện) — node Edit Image sẽ phóng to thành nền 1080x1350.\nconst CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();\nconst crc32 = (buf) => { let c = 0xffffffff; for (const x of buf) c = CRC_T[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };\nconst adler32 = (buf) => { let a = 1, b = 0; for (const x of buf) { a = (a + x) % 65521; b = (b + a) % 65521; } return ((b << 16) | a) >>> 0; };\nconst be32 = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n >>> 0); return b; };\nconst chunk = (type, data) => { const td = Buffer.concat([Buffer.from(type, 'ascii'), data]); return Buffer.concat([be32(data.length), td, be32(crc32(td))]); };\nconst gradientPng = (c1, c2) => {\n  const w = 8, h = 10;\n  const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));\n  const A = hex(c1), B = hex(c2);\n  const stride = 1 + w * 3;\n  const raw = Buffer.alloc(stride * h);\n  for (let y = 0; y < h; y++) {\n    const px = A.map((v, i) => Math.round(v + (B[i] - v) * (y / (h - 1))));\n    for (let x = 0; x < w; x++) raw.set(px, y * stride + 1 + x * 3);\n  }\n  const L = raw.length;\n  const z = Buffer.concat([Buffer.from([0x78, 0x01, 0x01, L & 255, L >> 8, ~L & 255, (~L >> 8) & 255]), raw, be32(adler32(raw))]);\n  const ihdr = Buffer.concat([be32(w), be32(h), Buffer.from([8, 2, 0, 0, 0])]);\n  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', z), chunk('IEND', Buffer.alloc(0))]);\n};\n\n// Lớp tối 1080x1350 (PNG palette + tRNS, mỗi dòng 1 độ trong suốt) — node Edit Image ghép lên ảnh, chuyển mượt không bị sọc.\nconst zStore = (raw) => {\n  const parts = [Buffer.from([0x78, 0x01])];\n  for (let o = 0; o < raw.length; o += 65535) {\n    const L = Math.min(65535, raw.length - o);\n    parts.push(Buffer.from([o + L >= raw.length ? 1 : 0, L & 255, L >> 8, ~L & 255, (~L >> 8) & 255]), raw.subarray(o, o + L));\n  }\n  parts.push(be32(adler32(raw)));\n  return Buffer.concat(parts);\n};\nconst ease = (t) => t * t * (3 - 2 * t);\nconst shadePng = (w, h, alphaAt) => {\n  const plte = Buffer.alloc(256 * 3), trns = Buffer.alloc(256);\n  for (let i = 0; i < 256; i++) trns[i] = i;\n  const raw = Buffer.alloc((w + 1) * h);\n  for (let y = 0; y < h; y++) raw.fill(Math.max(0, Math.min(255, Math.round(alphaAt(y)))), y * (w + 1) + 1, (y + 1) * (w + 1));\n  const ihdr = Buffer.concat([be32(w), be32(h), Buffer.from([8, 3, 0, 0, 0])]);\n  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('PLTE', plte), chunk('tRNS', trns), chunk('IDAT', zStore(raw)), chunk('IEND', Buffer.alloc(0))]);\n};\n// trên: tối nhẹ sau tên trang; dưới: tối dần từ trên nhãn xuống, đậm hẳn sau mép trên tiêu đề\nconst shadeFor = (cp) => shadePng(W, H, (y) => Math.max(\n  y < 230 ? 150 * ease(1 - y / 230) : 0,\n  y <= cp.shadeFrom ? 0 : y >= cp.shadeTo ? 232 : 232 * ease((y - cp.shadeFrom) / (cp.shadeTo - cp.shadeFrom)),\n));\n\nconst wrap = (text, maxChars) => {\n  const lines = [];\n  let cur = '';\n  for (const w of String(text).split(/\\s+/)) {\n    if (cur && (cur + ' ' + w).length > maxChars) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;\n  }\n  if (cur) lines.push(cur);\n  // tránh dòng cuối chỉ có 1 chữ: kéo chữ cuối của dòng trước xuống\n  const n = lines.length;\n  if (n >= 2 && !/\\s/.test(lines[n - 1])) {\n    const prev = lines[n - 2].split(' ');\n    if (prev.length >= 3) { lines[n - 1] = prev.pop() + ' ' + lines[n - 1]; lines[n - 2] = prev.join(' '); }\n  }\n  return lines;\n};\n\n// Bố cục kiểu bài tin tức: ảnh 1080x1350 (4:5) phủ kín, tên trang ở góc trên, nhãn chủ đề, tiêu đề lớn (dòng cuối tô vàng),\n// lớp tối dần từ dưới lên. Mọi toạ độ tính ở đây rồi node \"Add text to image\" chỉ việc vẽ.\nconst W = 1080, H = 1350, M = 64, MAX_LINES = 6;\nconst composeParams = (text, w, h, tag, brand) => {\n  const sc = Math.max(W / w, H / h);\n  const sw = Math.max(W, Math.round(w * sc));\n  const sh = Math.max(H, Math.round(h * sc));\n  const len = text.length;\n  let fs = len <= 60 ? 66 : len <= 90 ? 60 : len <= 120 ? 54 : 48;\n  let lines;\n  for (;;) {\n    lines = wrap(text, Math.floor((W - 2 * M) / (fs * 0.6)));\n    if (lines.length <= MAX_LINES || fs <= 34) break;\n    fs -= 4;\n  }\n  lines = lines.slice(0, MAX_LINES);\n  const lineH = Math.round(fs * 1.22);\n  const headTop = H - 72 - lines.length * lineH;\n  const labelFs = 34, labelH = 60;\n  const labelW = Math.round(tag.length * labelFs * 0.74 + 44);\n  const labelY = headTop - 30 - labelH;\n  const gradStart = labelY - 320;\n  return {\n    resizeW: W, resizeH: H, cropW: W, cropH: H,\n    cropX: Math.floor((sw - W) / 2), cropY: Math.floor((sh - H) * 0.35),\n    shadeFrom: gradStart, shadeTo: headTop - 30,\n    endX: W + 80, endY: H + 80,\n    // GraphicsMagick đặt chữ theo đường baseline: baseline = mép trên chữ + ~0.74 * cỡ chữ\n    brand: { text: brand, x: M, y: 48 + Math.round(0.74 * 32), fs: 32 },\n    label: { text: tag, x: M, y: labelY, w: labelW, h: labelH, tx: M + 22, ty: labelY + Math.round((labelH + 0.72 * labelFs) / 2), fs: labelFs },\n    lines: Array.from({ length: MAX_LINES }, (_, i) => lines[i]\n      ? { text: lines[i], y: headTop + i * lineH + Math.round(0.74 * fs), fs, color: lines.length >= 2 && i === lines.length - 1 ? '#FFD84D' : '#FFFFFF' }\n      : { text: '.', y: 5000, fs, color: '#FFFFFF' }),\n  };\n};\n\n// ---- main ----\nconst out = [];\nfor (let i = 0; i < $input.all().length; i++) {\n  const item = $input.all()[i];\n  const j = item.json;\n  if (j.error) { out.push(item); continue; }\n\n  let base = null;\n  let kind = 'article-photo';\n  if (item.binary && item.binary.source) {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'source');\n    base = { buf, mime: item.binary.source.mimeType || sniff(buf) || 'image/jpeg' };\n  }\n  if (!base) {\n    const c = Array.isArray(j.colors) && j.colors.length === 2 ? j.colors : ['#14532d', '#16a34a'];\n    base = { buf: gradientPng(c[0], c[1]), mime: 'image/png' };\n    kind = 'gradient';\n  }\n  const size = imageSize(base.buf) || { w: 1080, h: 810 };\n  const compose = composeParams(j.imageText, size.w, size.h, TAG(), BRAND);\n  out.push({\n    json: { ...j, imageSource: kind, compose },\n    binary: {\n      photo: await this.helpers.prepareBinaryData(base.buf, 'photo.' + extOf(base.mime), base.mime),\n      shade: await this.helpers.prepareBinaryData(shadeFor(compose), 'shade.png', 'image/png'),\n    },\n  });\n}\nreturn out;\n"
+      },
+      "id": "82b64a68-02c5-4681-83d5-25c0f764ee62",
+      "name": "Make image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "multiStep",
+        "dataPropertyName": "photo",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": "={{ $json.compose.resizeW }}",
+              "height": "={{ $json.compose.resizeH }}",
+              "resizeOption": "minimumArea"
+            },
+            {
+              "operation": "crop",
+              "width": "={{ $json.compose.cropW }}",
+              "height": "={{ $json.compose.cropH }}",
+              "positionX": "={{ $json.compose.cropX }}",
+              "positionY": "={{ $json.compose.cropY }}"
+            },
+            {
+              "operation": "composite",
+              "dataPropertyNameComposite": "shade",
+              "operator": "Over",
+              "positionX": 0,
+              "positionY": 0
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.brand.text }}",
+              "fontSize": "={{ $json.compose.brand.fs }}",
+              "fontColor": "#FFFFFF",
+              "positionX": "={{ $json.compose.brand.x }}",
+              "positionY": "={{ $json.compose.brand.y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "draw",
+              "primitive": "rectangle",
+              "color": "#FFFFFF",
+              "startPositionX": "={{ $json.compose.label.x }}",
+              "startPositionY": "={{ $json.compose.label.y }}",
+              "endPositionX": "={{ $json.compose.label.x + $json.compose.label.w }}",
+              "endPositionY": "={{ $json.compose.label.y + $json.compose.label.h }}",
+              "cornerRadius": 0
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.label.text }}",
+              "fontSize": "={{ $json.compose.label.fs }}",
+              "fontColor": "#111111",
+              "positionX": "={{ $json.compose.label.tx }}",
+              "positionY": "={{ $json.compose.label.ty }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[0].text }}",
+              "fontSize": "={{ $json.compose.lines[0].fs }}",
+              "fontColor": "={{ $json.compose.lines[0].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[0].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[1].text }}",
+              "fontSize": "={{ $json.compose.lines[1].fs }}",
+              "fontColor": "={{ $json.compose.lines[1].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[1].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[2].text }}",
+              "fontSize": "={{ $json.compose.lines[2].fs }}",
+              "fontColor": "={{ $json.compose.lines[2].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[2].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[3].text }}",
+              "fontSize": "={{ $json.compose.lines[3].fs }}",
+              "fontColor": "={{ $json.compose.lines[3].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[3].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[4].text }}",
+              "fontSize": "={{ $json.compose.lines[4].fs }}",
+              "fontColor": "={{ $json.compose.lines[4].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[4].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            },
+            {
+              "operation": "text",
+              "text": "={{ $json.compose.lines[5].text }}",
+              "fontSize": "={{ $json.compose.lines[5].fs }}",
+              "fontColor": "={{ $json.compose.lines[5].color }}",
+              "positionX": 64,
+              "positionY": "={{ $json.compose.lines[5].y }}",
+              "horizontalAlignment": "west",
+              "verticalAlignment": "north",
+              "lineLength": 400,
+              "font": "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf"
+            }
+          ]
+        },
+        "options": {
+          "destinationKey": "image",
+          "format": "png",
+          "fileName": "post.png"
+        }
+      },
+      "id": "c96132a4-b06c-4c89-8325-89b0f5708815",
+      "name": "Add text to image",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mỗi bài → 2 file: <tên>.png (ảnh có chữ) + <tên>.txt (caption đăng Facebook).\nconst cfg = $('Config').first().json;\nconst DIR = String(cfg.outputDir || '/files/output').replace(/[\\\\/]+$/, '');\n\nlet stamp;\ntry { stamp = $now.toFormat('yyyy-LL-dd_HHmm'); } catch (e) { stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', ''); }\nconst slug = (s) => String(s).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'post';\n\nlet sd = null;\ntry { sd = $getWorkflowStaticData('global'); } catch (e) { /* static data unavailable */ }\n\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const image = item.binary && item.binary.image;\n  if (j.error || !j.fbCaption) {\n    out.push({ json: { error: j.error || 'thiếu caption', title: j.title, link: j.link } });\n    continue;\n  }\n  const base = stamp + '_' + j.topic + '_' + slug(j.title);\n  const sourceLabel = /vi/i.test(String(cfg.captionLanguage || '')) ? 'Nguồn' : 'Source';\n  const hashtags = (j.hashtags || []).map((h) => '#' + h).join(' ');\n  const caption = [j.fbCaption.trim(), hashtags, sourceLabel + ': ' + j.link].filter(Boolean).join('\\n\\n') + '\\n';\n\n  if (image) {\n    const mime = image.mimeType || 'image/png';\n    const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png';\n    out.push({\n      json: { filePath: DIR + '/' + base + '.' + ext, kind: 'image', topic: j.topic, title: j.title, imageSource: j.imageSource, fbStatus: j.fbStatus || '', fbScheduledAt: j.fbScheduledAt || '', fbScheduledAtVN: j.fbScheduledAtVN || '' },\n      binary: { data: image },\n    });\n  }\n  out.push({\n    json: { filePath: DIR + '/' + base + '.txt', kind: 'caption', topic: j.topic, title: j.title },\n    binary: { data: await this.helpers.prepareBinaryData(Buffer.from(caption, 'utf8'), base + '.txt', 'text/plain') },\n  });\n\n  if (sd) { // nhớ bài đã đăng để lần chạy sau không lặp lại\n    sd.seen = sd.seen || {};\n    sd.seen[j.seenKey] = Date.now();\n    for (const k of Object.keys(sd.seen)) if (Date.now() - sd.seen[k] > 90 * 86400000) delete sd.seen[k];\n  }\n}\nreturn out;\n"
+      },
+      "id": "c511a057-8efd-49bc-a9bc-a42acaa3b8cb",
+      "name": "Build output files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7ef5f3ad-40ba-45a3-86ea-65d4f50f293d",
+              "leftValue": "={{ !!$json.filePath }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "abbeac32-788c-4156-8e18-5c8d0906f472",
+      "name": "Has file to save?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.filePath }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "22505635-aca1-47b9-8f53-8e20dcb5a196",
+      "name": "Save to output folder",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3480,
+        120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tổng kết sau khi xử lý xong tất cả bài.\nconst all = $input.all().map((i) => i.json);\nconst failed = all.filter((x) => x.error);\nconst files = all.filter((x) => !x.error && x.filePath);\nconst cfg = $('Config').first().json;\nreturn [{\n  json: {\n    outputDir: cfg.outputDir,\n    filesSaved: files.length,\n    postsFailed: failed.length,\n    images: files.filter((f) => f.kind === 'image').length,\n    captions: files.filter((f) => f.kind === 'caption').length,\n    errors: failed.map((f) => (f.title ? f.title + ' — ' : '') + f.error),\n    imageSources: files.filter((f) => f.kind === 'image').reduce((o, f) => ((o[f.imageSource] = (o[f.imageSource] || 0) + 1), o), {}),\n    facebook: files.filter((f) => f.kind === 'image').map((f) => (f.fbStatus === 'scheduled' ? f.fbScheduledAt + ' (VN ' + f.fbScheduledAtVN + ')' : f.fbStatus) + ' — ' + f.title),\n    files: files.map((f) => f.filePath),\n  },\n}];\n"
+      },
+      "id": "e4725078-ebc4-4349-8d2e-735eb799d95d",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "321a62c4-8f33-4b4d-bead-47ca7af78dd0",
+              "leftValue": "={{ !$json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "39a273f3-ce93-4bfa-9f15-171d73899830",
+      "name": "Has caption?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chuẩn bị bài hẹn giờ cho Facebook Page: tính giờ đăng + caption. Node \"Facebook: schedule post\" (HTTP Request) sẽ upload.\n// Các bài của một lần chạy được chia đều từ fbStartTime đến fbEndTime (giờ fbTimezone) của ngày kế tiếp còn kịp.\nconst cfg = $('Config').first().json;\nconst PAGE_ID = String(cfg.fbPageId || '').trim();\nconst TOKEN = String(cfg.fbPageToken || '').trim();\nconst TZ = String(cfg.fbTimezone || 'America/New_York');\n\nconst item = $input.first();\nconst j = item.json;\nconst skip = !PAGE_ID || !TOKEN || /PASTE|YOUR_/i.test(TOKEN) || !(item.binary && item.binary.image);\n\n// ---- giờ đăng ----\nconst hm = (s, d) => { const m = String(s || d).match(/^(\\d{1,2}):(\\d{2})$/); return m ? { hour: +m[1], minute: +m[2] } : hm(d, d); };\nconst total = Math.max(1, $('Fetch RSS & pick articles').all().length);\nconst slot = $runIndex; // vòng lặp xử lý 1 bài / lần → lần thứ mấy tới node này = bài thứ mấy được đăng\nconst now = DateTime.now().setZone(TZ);\nlet day = now.startOf('day');\nconst startOf = (d) => d.set(hm(cfg.fbStartTime, '08:00'));\nif (startOf(day) < now.plus({ minutes: 20 })) day = day.plus({ days: 1 });\nconst start = startOf(day);\nlet end = day.set(hm(cfg.fbEndTime, '20:00'));\nif (end <= start) end = end.plus({ days: 1 });\nconst step = total > 1 ? (end - start) / (total - 1) : 0;\nconst when = start.plus({ milliseconds: Math.round(step * Math.min(slot, total - 1)) }).startOf('minute');\n\n// ---- caption giống file .txt ----\nconst sourceLabel = /vi/i.test(String(cfg.captionLanguage || '')) ? 'Nguồn' : 'Source';\nconst hashtags = (j.hashtags || []).map((h) => '#' + h).join(' ');\nconst message = [String(j.fbCaption || '').trim(), hashtags, sourceLabel + ': ' + j.link].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    ...j,\n    fb: {\n      skip,\n      url: 'https://graph.facebook.com/' + String(cfg.fbGraphVersion || 'v24.0') + '/' + encodeURIComponent(PAGE_ID) + '/photos',\n      token: TOKEN,\n      message,\n      time: String(Math.floor(when.toSeconds())),\n      at: when.toFormat('yyyy-LL-dd HH:mm') + ' ' + when.offsetNameShort,\n      atVN: when.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-LL-dd HH:mm'),\n    },\n  },\n  binary: item.binary,\n}];\n"
+      },
+      "id": "5b553fe9-3443-44d1-99c3-a9e2a8e5acf5",
+      "name": "Prepare Facebook post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2040,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.fb.url }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "source",
+              "inputDataFieldName": "image"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.fb.message }}",
+              "parameterType": "formData"
+            },
+            {
+              "name": "published",
+              "value": "false",
+              "parameterType": "formData"
+            },
+            {
+              "name": "scheduled_publish_time",
+              "value": "={{ $json.fb.time }}",
+              "parameterType": "formData"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.fb.token }}",
+              "parameterType": "formData"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "33a8f260-4b9d-4f74-b05e-7d3026ec8190",
+      "name": "Facebook: schedule post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2520,
+        40
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gộp kết quả Facebook vào bài (giữ ảnh) để lưu file + báo cáo ở Summary.\nconst p = $('Prepare Facebook post').first();\nconst { fb, ...j } = p.json;\nconst r = $input.first().json || {};\nconst id = r.post_id || r.id;\nlet fbStatus;\nif (fb.skip) fbStatus = 'skipped (chưa có fbPageId / fbPageToken)';\nelse if (id) fbStatus = 'scheduled';\nelse {\n  const e = r.error || {};\n  const msg = (e.description || e.message || (typeof e === 'string' ? e : '') || JSON.stringify(r)).toString();\n  fbStatus = 'error: ' + msg.slice(0, 250);\n}\nreturn [{\n  json: { ...j, fbStatus, fbScheduledAt: fb.at, fbScheduledAtVN: fb.atVN, fbPostId: id || '' },\n  binary: p.binary,\n}];\n"
+      },
+      "id": "53eb8951-447a-4893-a00e-60bb13f3a060",
+      "name": "Read Facebook result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2760,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "07c067f6-8ca3-4a3a-a326-658a3831a680",
+              "leftValue": "={{ !$json.fb.skip }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "387f0508-95a8-4813-af23-949ed511d31c",
+      "name": "Post to Facebook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2280,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "RSS feed list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS feed list": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS & pick articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS & pick articles": {
+      "main": [
+        [
+          {
+            "node": "Loop over posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over posts": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini: write captions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: write captions": {
+      "main": [
+        [
+          {
+            "node": "Make image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make image": {
+      "main": [
+        [
+          {
+            "node": "Has caption?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add text to image": {
+      "main": [
+        [
+          {
+            "node": "Prepare Facebook post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build output files": {
+      "main": [
+        [
+          {
+            "node": "Has file to save?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has file to save?": {
+      "main": [
+        [
+          {
+            "node": "Save to output folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop over posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to output folder": {
+      "main": [
+        [
+          {
+            "node": "Loop over posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has caption?": {
+      "main": [
+        [
+          {
+            "node": "Add text to image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build output files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Facebook post": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Facebook?": {
+      "main": [
+        [
+          {
+            "node": "Facebook: schedule post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Facebook result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook: schedule post": {
+      "main": [
+        [
+          {
+            "node": "Read Facebook result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Facebook result": {
+      "main": [
+        [
+          {
+            "node": "Build output files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every day 16:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "tags": []
+}

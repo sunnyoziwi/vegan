@@ -1,0 +1,46 @@
+name: Facebook daily posts
+
+on:
+  schedule:
+    - cron: '17 9 * * *'   # giờ UTC → 16:17 giờ VN
+  workflow_dispatch:        # nút "Run workflow" để chạy tay
+
+permissions:
+  contents: write           # để commit state/static-data.json
+
+concurrency:
+  group: facebook-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chạy workflow n8n
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+        run: bash ci/run-facebook.sh
+
+      - name: Lưu danh sách bài đã đăng
+        if: always()
+        run: |
+          git diff --quiet -- state/static-data.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/static-data.json
+          git commit -m "Cập nhật danh sách bài đã đăng"
+          git pull --rebase
+          git push
+
+      - name: Lưu ảnh + caption (tải về trong 7 ngày)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-${{ github.run_id }}
+          path: run/output/
+          retention-days: 7
+          if-no-files-found: ignore

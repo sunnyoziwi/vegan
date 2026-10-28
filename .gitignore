@@ -1,0 +1,12 @@
+# docker image (1.2GB) và kết quả chạy trên máy
+n8n-latest.tar
+output/
+tiktok_output/
+run/
+
+# bản workflow còn key thật — KHÔNG đẩy lên GitHub
+.local/
+n8n-vegan-tiktok-workflow.json
+.env
+
+.DS_Store
