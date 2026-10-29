@@ -496,7 +496,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Chuẩn bị bài hẹn giờ cho Facebook Page: tính giờ đăng + caption. Node \"Facebook: schedule post\" (HTTP Request) sẽ upload.\n// Các bài của một lần chạy được chia đều từ fbStartTime đến fbEndTime (giờ fbTimezone) của ngày kế tiếp còn kịp.\nconst cfg = $('Config').first().json;\nconst PAGE_ID = String(cfg.fbPageId || '').trim();\nconst TOKEN = String(cfg.fbPageToken || '').trim();\nconst TZ = String(cfg.fbTimezone || 'America/New_York');\n\nconst item = $input.first();\nconst j = item.json;\nconst skip = !PAGE_ID || !TOKEN || /PASTE|YOUR_/i.test(TOKEN) || !(item.binary && item.binary.image);\n\n// ---- giờ đăng ----\nconst hm = (s, d) => { const m = String(s || d).match(/^(\\d{1,2}):(\\d{2})$/); return m ? { hour: +m[1], minute: +m[2] } : hm(d, d); };\nconst total = Math.max(1, $('Fetch RSS & pick articles').all().length);\nconst slot = $runIndex; // vòng lặp xử lý 1 bài / lần → lần thứ mấy tới node này = bài thứ mấy được đăng\nconst now = DateTime.now().setZone(TZ);\nlet day = now.startOf('day');\nconst startOf = (d) => d.set(hm(cfg.fbStartTime, '08:00'));\nif (startOf(day) < now.plus({ minutes: 20 })) day = day.plus({ days: 1 });\nconst start = startOf(day);\nlet end = day.set(hm(cfg.fbEndTime, '20:00'));\nif (end <= start) end = end.plus({ days: 1 });\nconst step = total > 1 ? (end - start) / (total - 1) : 0;\nconst when = start.plus({ milliseconds: Math.round(step * Math.min(slot, total - 1)) }).startOf('minute');\n\n// ---- caption giống file .txt ----\nconst sourceLabel = /vi/i.test(String(cfg.captionLanguage || '')) ? 'Nguồn' : 'Source';\nconst hashtags = (j.hashtags || []).map((h) => '#' + h).join(' ');\nconst message = [String(j.fbCaption || '').trim(), hashtags, sourceLabel + ': ' + j.link].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    ...j,\n    fb: {\n      skip,\n      url: 'https://graph.facebook.com/' + String(cfg.fbGraphVersion || 'v24.0') + '/' + encodeURIComponent(PAGE_ID) + '/photos',\n      token: TOKEN,\n      message,\n      time: String(Math.floor(when.toSeconds())),\n      at: when.toFormat('yyyy-LL-dd HH:mm') + ' ' + when.offsetNameShort,\n      atVN: when.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-LL-dd HH:mm'),\n    },\n  },\n  binary: item.binary,\n}];\n"
+        "jsCode": "// Chuẩn bị bài hẹn giờ cho Facebook Page: tính giờ đăng + caption. Node \"Facebook: schedule post\" (HTTP Request) sẽ upload.\n// Các bài của một lần chạy được chia đều từ fbStartTime đến fbEndTime (giờ fbTimezone) của ngày kế tiếp còn kịp.\nconst cfg = $('Config').first().json;\nconst PAGE_ID = String(cfg.fbPageId || '').trim();\nconst TOKEN = String(cfg.fbPageToken || '').trim();\nconst TZ = String(cfg.fbTimezone || 'America/New_York');\n\nconst item = $input.first();\nconst j = item.json;\nconst skip = !PAGE_ID || !TOKEN || /PASTE|YOUR_/i.test(TOKEN) || !(item.binary && item.binary.image);\n\n// ---- giờ đăng ----\nconst hm = (s, d) => { const m = String(s || d).match(/^(\\d{1,2}):(\\d{2})$/); return m ? { hour: +m[1], minute: +m[2] } : hm(d, d); };\nconst total = Math.max(1, $('Fetch RSS & pick articles').all().length);\nconst slot = $runIndex; // vòng lặp xử lý 1 bài / lần → lần thứ mấy tới node này = bài thứ mấy được đăng\nconst now = DateTime.now().setZone(TZ);\nlet day = now.startOf('day');\nconst startOf = (d) => d.set(hm(cfg.fbStartTime, '08:00'));\nif (startOf(day) < now.plus({ minutes: 20 })) day = day.plus({ days: 1 });\nconst start = startOf(day);\nlet end = day.set(hm(cfg.fbEndTime, '20:00'));\nif (end <= start) end = end.plus({ days: 1 });\nconst step = total > 1 ? (end - start) / (total - 1) : 0;\nconst when = start.plus({ milliseconds: Math.round(step * Math.min(slot, total - 1)) }).startOf('minute');\n\n// ---- caption giống file .txt ----\nconst sourceLabel = /vi/i.test(String(cfg.captionLanguage || '')) ? 'Nguồn' : 'Source';\nconst hashtags = (j.hashtags || []).map((h) => '#' + h).join(' ');\nconst message = [String(j.fbCaption || '').trim(), hashtags, sourceLabel + ': ' + j.link].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    ...j,\n    fb: {\n      skip,\n      url: 'https://graph.facebook.com/' + String(cfg.fbGraphVersion || 'v24.0') + '/' + encodeURIComponent(PAGE_ID) + '/photos',\n      // ảnh tải lên ẩn tạm (photos) rồi tạo BÀI VIẾT (feed) gắn ảnh đó → hiện trên dòng thời gian Page (đăng thẳng /photos chỉ thành ảnh trong album)\n      feedUrl: 'https://graph.facebook.com/' + String(cfg.fbGraphVersion || 'v24.0') + '/' + encodeURIComponent(PAGE_ID) + '/feed',\n      token: TOKEN,\n      message,\n      time: String(Math.floor(when.toSeconds())),\n      at: when.toFormat('yyyy-LL-dd HH:mm') + ' ' + when.offsetNameShort,\n      atVN: when.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-LL-dd HH:mm'),\n    },\n  },\n  binary: item.binary,\n}];\n"
       },
       "id": "5b553fe9-3443-44d1-99c3-a9e2a8e5acf5",
       "name": "Prepare Facebook post",
@@ -521,18 +521,13 @@
               "inputDataFieldName": "image"
             },
             {
-              "name": "message",
-              "value": "={{ $json.fb.message }}",
-              "parameterType": "formData"
-            },
-            {
               "name": "published",
               "value": "false",
               "parameterType": "formData"
             },
             {
-              "name": "scheduled_publish_time",
-              "value": "={{ $json.fb.time }}",
+              "name": "temporary",
+              "value": "true",
               "parameterType": "formData"
             },
             {
@@ -547,7 +542,7 @@
         }
       },
       "id": "33a8f260-4b9d-4f74-b05e-7d3026ec8190",
-      "name": "Facebook: schedule post",
+      "name": "Facebook: upload photo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -559,7 +554,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gộp kết quả Facebook vào bài (giữ ảnh) để lưu file + báo cáo ở Summary.\nconst p = $('Prepare Facebook post').first();\nconst { fb, ...j } = p.json;\nconst r = $input.first().json || {};\nconst id = r.post_id || r.id;\nlet fbStatus;\nif (fb.skip) fbStatus = 'skipped (chưa có fbPageId / fbPageToken)';\nelse if (id) fbStatus = 'scheduled';\nelse {\n  const e = r.error || {};\n  const msg = (e.description || e.message || (typeof e === 'string' ? e : '') || JSON.stringify(r)).toString();\n  fbStatus = 'error: ' + msg.slice(0, 250);\n}\nreturn [{\n  json: { ...j, fbStatus, fbScheduledAt: fb.at, fbScheduledAtVN: fb.atVN, fbPostId: id || '' },\n  binary: p.binary,\n}];\n"
+        "jsCode": "// Gộp kết quả Facebook vào bài (giữ ảnh) để lưu file + báo cáo ở Summary.\nconst p = $('Prepare Facebook post').first();\nconst { fb, ...j } = p.json;\nlet r = $input.first().json || {};\n// bước tải ảnh lỗi → báo lỗi đó (bước tạo bài sẽ chỉ báo thiếu ảnh)\ntry { const u = $('Facebook: upload photo').first().json || {}; if (!fb.skip && !u.id) r = u; } catch (e) { /* nhánh bỏ qua đăng FB */ }\nconst id = r.post_id || r.id;\nlet fbStatus;\nif (fb.skip) fbStatus = 'skipped (chưa có fbPageId / fbPageToken)';\nelse if (id) fbStatus = 'scheduled';\nelse {\n  const e = r.error || {};\n  const msg = (e.description || e.message || (typeof e === 'string' ? e : '') || JSON.stringify(r)).toString();\n  fbStatus = 'error: ' + msg.slice(0, 250);\n}\nreturn [{\n  json: { ...j, fbStatus, fbScheduledAt: fb.at, fbScheduledAtVN: fb.atVN, fbPostId: id || '' },\n  binary: p.binary,\n}];\n"
       },
       "id": "53eb8951-447a-4893-a00e-60bb13f3a060",
       "name": "Read Facebook result",
@@ -603,6 +598,28 @@
         2280,
         120
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Prepare Facebook post').first().json.fb.feedUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $('Prepare Facebook post').first().json.fb.message, attached_media: [{ media_fbid: $json.id }], published: false, scheduled_publish_time: Number($('Prepare Facebook post').first().json.fb.time), access_token: $('Prepare Facebook post').first().json.fb.token }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "726bfb2e-1a1b-4e0d-be3c-283c0d0517d2",
+      "name": "Facebook: create post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2740,
+        40
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     }
   ],
   "connections": {
@@ -774,22 +791,11 @@
       "main": [
         [
           {
-            "node": "Facebook: schedule post",
+            "node": "Facebook: upload photo",
             "type": "main",
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Read Facebook result",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Facebook: schedule post": {
-      "main": [
         [
           {
             "node": "Read Facebook result",
@@ -815,6 +821,28 @@
         [
           {
             "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook: upload photo": {
+      "main": [
+        [
+          {
+            "node": "Facebook: create post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook: create post": {
+      "main": [
+        [
+          {
+            "node": "Read Facebook result",
             "type": "main",
             "index": 0
           }
