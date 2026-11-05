@@ -9,3 +9,9 @@ run/
 .env
 
 .DS_Store
+
+# YouTube: video, thumbnail, tài liệu nghiên cứu và log chạy trên máy (quá nặng, chỉ đẩy phần flow)
+youtube/post*/
+youtube/work/
+youtube/automation/logs/
+youtube/automation/LAST_STATUS.txt

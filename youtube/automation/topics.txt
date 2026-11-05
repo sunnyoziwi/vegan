@@ -1,0 +1,3 @@
+# Chu de xep hang cho video hang ngay: moi dong la mot chu de, tu tren xuong duoi.
+# Dong dau tien se duoc lam o lan chay tiep theo, va tu dong bi xoa khi video xong.
+# De trong thi Claude tu chon chu de, khong trung voi cac post da co.
