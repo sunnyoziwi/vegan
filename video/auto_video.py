@@ -206,20 +206,13 @@ def choose_image(sentence, cands):
 
 
 # ---------- main ----------
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True); ap.add_argument("--mock"); ap.add_argument("--link")
-    a = ap.parse_args()
-    out = Path(a.out); img = out / "img"; img.mkdir(parents=True, exist_ok=True)
-    state_f = ROOT / "state" / "video.json"
-    state = json.loads(state_f.read_text(encoding="utf8")) if state_f.exists() else {"seen": {}}
-    if not a.mock and not os.environ.get("GEMINI_API_KEY"): sys.exit("Thiếu GEMINI_API_KEY")
+class Skip(Exception):
+    """Bài này không làm được (thiếu ảnh khớp...): bỏ, thử bài khác."""
 
-    if a.link: title, link, key = a.link, a.link, re.sub(r"^https?://(www\.)?|[?#].*$|/+$", "", a.link).lower()
-    else:
-        cands = pick_article(state["seen"])
-        if not cands: sys.exit("Không có bài mới phù hợp.")
-        _, title, link, key = cands[0]
+
+def make_one(title, link, out, mock):
+    """Làm 1 video từ 1 bài, ghi vào thư mục out. Ném Skip nếu bài không đủ cảnh có ảnh khớp."""
+    img = out / "img"; img.mkdir(parents=True, exist_ok=True)
     log("Bài:", title, link)
     text, urls, alts = fetch_article(link)
     cand = []
@@ -229,8 +222,8 @@ def main():
         except Exception as e: log("bỏ ảnh", u, e)
     log(f"{len(cand)} ảnh ứng viên từ bài")
 
-    story = json.loads(Path(a.mock).read_text(encoding="utf8")) if a.mock else write_story(title, text, cand, alts)
-    if not a.mock and len(story.get("scenes", [])) < MIN_SCENES + 1:  # Gemini đôi khi viết thiếu cảnh: cho viết lại 1 lần
+    story = json.loads(Path(mock).read_text(encoding="utf8")) if mock else write_story(title, text, cand, alts)
+    if not mock and len(story.get("scenes", [])) < MIN_SCENES + 1:  # Gemini đôi khi viết thiếu cảnh: cho viết lại 1 lần
         log(f"Gemini mới viết {len(story.get('scenes', []))} cảnh, thử lại")
         again = write_story(title, text, cand, alts)
         if len(again.get("scenes", [])) > len(story.get("scenes", [])): story = again
@@ -241,7 +234,7 @@ def main():
         m = re.fullmatch(r"IMG(\d+)", s.get("image") or "")
         if m and int(m.group(1)) < len(cand):
             c = [(cand[int(m.group(1))][0], "ảnh trong bài")]
-            r = {"pick": 0} if a.mock else choose_image(s["text"], c)
+            r = {"pick": 0} if mock else choose_image(s["text"], c)
             if r.get("pick", -1) == 0:
                 sel = c[0]
             else:
@@ -251,7 +244,7 @@ def main():
             if sel or not query: break
             cs = commons_candidates(query, img, f"w{i}_{attempt}")
             if not cs: log(f"  cảnh {i}: không có ảnh cho «{query}»"); break
-            r = {"pick": 0} if a.mock else choose_image(s["text"], cs)
+            r = {"pick": 0} if mock else choose_image(s["text"], cs)
             if r.get("pick", -1) >= 0:
                 sel = cs[r["pick"]]; log(f"  cảnh {i}: «{query}» -> {sel[1]}"); break
             log(f"  cảnh {i}: «{query}» không có ảnh khớp — {r.get('reason', '')[:120]}")
@@ -261,7 +254,7 @@ def main():
         else:
             log(f"  cảnh {i}: BỎ — «{s['text'][:60]}»")
     scenes = final_scenes
-    if len(scenes) < MIN_SCENES: sys.exit(f"Chỉ {len(scenes)} cảnh có ảnh khớp (cần ≥{MIN_SCENES}); bỏ bài này.")
+    if len(scenes) < MIN_SCENES: raise Skip(f"Chỉ {len(scenes)} cảnh có ảnh khớp (cần ≥{MIN_SCENES}); bỏ bài này.")
     final = {"lang": "vi", "width": 1080, "height": 1920, "source": link,
              "scenes": [{"text": s["text"], "image": str(p.relative_to(out)).replace("\\", "/")} for s, p in zip(scenes, paths)]}
     (out / "story.json").write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf8")
@@ -271,9 +264,33 @@ def main():
     sys.path.insert(0, str(Path(__file__).parent))
     import make_video
     make_video.main(str(out / "story.json"), str(out / "video.mp4"))
-    if not a.mock and not a.link:
-        state["seen"][key] = int(time.time() * 1000)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True); ap.add_argument("--mock"); ap.add_argument("--link")
+    ap.add_argument("--count", type=int, default=1, help="số video làm trong 1 lần chạy (mỗi video 1 bài khác nhau)")
+    ap.add_argument("--state", default="video", help="tên file trạng thái trong state/ (mỗi luồng 1 file riêng)")
+    a = ap.parse_args()
+    out = Path(a.out)
+    if not a.mock and not os.environ.get("GEMINI_API_KEY"): sys.exit("Thiếu GEMINI_API_KEY")
+    if a.link:  # thử 1 bài cụ thể, không ghi trạng thái
+        make_one(a.link, a.link, out, a.mock); return
+    state_f = ROOT / "state" / f"{a.state}.json"
+    state = json.loads(state_f.read_text(encoding="utf8")) if state_f.exists() else {"seen": {}}
+    done = 0
+    for _, title, link, key in pick_article(state["seen"]):
+        if done >= a.count: break
+        log(f"=== Video {done + 1}/{a.count}: {title}")
+        try:
+            make_one(title, link, out / str(done + 1), a.mock)
+            done += 1
+        except (Skip, Exception) as e:  # bài lỗi/thiếu ảnh: bỏ, thử bài kế tiếp (SystemExit như hết quota thì dừng hẳn)
+            log("Bỏ bài:", e)
+        state["seen"][key] = int(time.time() * 1000)  # kể cả bài bị bỏ, để lần sau không thử lại mãi
         state_f.parent.mkdir(exist_ok=True); state_f.write_text(json.dumps(state, indent=2), encoding="utf8")
+    log(f"Xong {done}/{a.count} video")
+    if done == 0: sys.exit("Không làm được video nào.")
 
 
 if __name__ == "__main__":

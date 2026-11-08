@@ -1,0 +1,85 @@
+name: Facebook daily videos
+
+on:
+  schedule:
+    - cron: '17 4 * * *'   # giờ UTC → 11:17 giờ VN
+  workflow_dispatch:        # nút "Run workflow" để chạy tay
+
+permissions:
+  contents: write           # để commit state/video-facebook.json
+
+concurrency:
+  group: video-facebook
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cài FFmpeg, font và thư viện
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          pip install --quiet pillow
+
+      - name: Bật VoiceStudio (Docker bản CPU) và thử đọc 1 câu bằng giọng nam
+        id: voicestudio            # không có giọng dự phòng: hỏng ở đây thì workflow dừng
+        env:
+          VS_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
+          VS_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
+        run: |
+          KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "::add-mask::$KEY"
+          docker run -d --name voicestudio -p 127.0.0.1:3900:3900 \
+            -e OMNIVOICE_API_KEY="$KEY" -e OMNIVOICE_ANALYTICS_DISABLED=1 \
+            -e OMNIVOICE_DATA_DIR=/app/omnivoice_data \
+            ghcr.io/debpalash/voicestudio:stable
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3900/.well-known/voicestudio-speech >/dev/null && break
+            sleep 10
+          done
+          curl -sf --max-time 600 http://127.0.0.1:3900/v1/audio/speech \
+            -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+            -d "{\"model\":\"tts-1\",\"input\":\"Xin chào, đây là giọng thử.\",\"voice\":\"${VS_VOICE:-default}\",\"instructions\":\"${VS_INSTRUCT:-male, middle-aged, low pitch}\",\"response_format\":\"mp3\"}" \
+            -o /tmp/probe.mp3
+          test "$(stat -c%s /tmp/probe.mp3)" -gt 2000
+          echo "VOICESTUDIO_API_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Nhật ký VoiceStudio nếu không chạy được
+        if: failure() && steps.voicestudio.outcome == 'failure'
+        run: docker logs --tail 80 voicestudio || true
+
+      - name: Làm video (Gemini viết lời + chọn ảnh, giọng đọc, FFmpeg dựng)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VOICESTUDIO_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
+          VOICESTUDIO_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
+        run: python video/auto_video.py --out run/video --count 2 --state video-facebook
+
+      - name: Lưu danh sách bài đã làm
+        if: always()
+        run: |
+          test -f state/video-facebook.json || exit 0
+          git add state/video-facebook.json
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Cập nhật danh sách bài video Facebook đã làm"
+          git pull --rebase
+          git push
+
+      - name: Lưu video + caption (tải về trong 7 ngày)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-facebook-${{ github.run_id }}
+          path: run/video/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -110,7 +110,7 @@
             {
               "id": "57ce714b-8513-4a83-9ed9-489f6e26e7ba",
               "name": "maxPosts",
-              "value": 10,
+              "value": 3,
               "type": "number"
             },
             {
