@@ -19,7 +19,7 @@ FEEDS = [
     "https://animalequality.org/feed/", "https://plantbasednews.org/feed/", "https://www.veganfoodandliving.com/feed/",
 ]
 ON_TOPIC = re.compile(r"vegan|plant-based|animal|farm|slaughter|meat|dairy|egg|fish|wildlife|sanctuary|rescue|cruelty|foie", re.I)
-MAX_AGE_DAYS, MAX_CANDIDATE_IMAGES, MIN_SCENES, MAX_SCENES = 7, 8, 5, 8
+MAX_AGE_DAYS, MAX_CANDIDATE_IMAGES, MIN_SCENES, MAX_SCENES = 7, 8, 4, 8
 
 
 def log(*a):
@@ -72,10 +72,15 @@ def pick_article(seen):
 def fetch_article(link):
     page = http(link).decode("utf8", "ignore")
     og = re.search(r'og:image"[^>]*content="([^"]+)"', page) or re.search(r'content="([^"]+)"[^>]*og:image', page)
-    body = re.search(r"<article[\s\S]*?</article>", page)
-    scope = body.group(0) if body else page
-    text = strip_html(scope)[:9000]
-    imgs, bad = [], re.compile(r"logo|avatar|icon|favicon|gravatar|pixel|1x1|\.gif|\.svg|-\d+x\d+\.", re.I)
+    # Trang có nhiều thẻ <article> (thẻ "bài liên quan" cũng là <article>): lấy khối dài nhất = bài chính.
+    for tag in ("nav", "header", "footer", "aside", "form", "noscript"):
+        page = re.sub(rf"<{tag}[\s>][\s\S]*?</{tag}>", " ", page, flags=re.I)
+    blocks = re.findall(r"<article[\s\S]*?</article>", page)
+    scope = max(blocks, key=len) if blocks else page
+    if len(strip_html(scope)) < 1500:
+        scope = page
+    text = strip_html(scope)[:12000]
+    imgs, bad = [], re.compile(r"logo|avatar|icon|favicon|gravatar|pixel|1x1|ytimg|\.gif|\.svg|-\d+x\d+\.", re.I)
     urls = ([og.group(1)] if og else []) + re.findall(r'(?:data-src|src)="(https?://[^"]+\.(?:jpe?g|png|webp)[^"]*)"', scope)
     for u in urls:
         u = html.unescape(u)
@@ -94,21 +99,32 @@ def download(url, path):
     if not ok: path.unlink(); raise ValueError("không phải ảnh")
 
 
-def commons_search(query, outdir, name):
-    """Tìm 1 ảnh Wikimedia Commons theo từ khoá; trả về (đường dẫn, ghi nguồn) hoặc None."""
-    u = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode({
-        "action": "query", "format": "json", "generator": "search", "gsrsearch": query + " filetype:bitmap",
-        "gsrnamespace": 6, "gsrlimit": 4, "prop": "imageinfo", "iiprop": "url|extmetadata|size", "iiurlwidth": 1600})
-    r = json.loads(http(u, headers={"User-Agent": BOT_UA}))
-    for p in sorted(r.get("query", {}).get("pages", {}).values(), key=lambda p: p["index"]):
+def commons_candidates(query, outdir, name, n=5):
+    """Tìm tối đa n ảnh Wikimedia Commons (giấy phép mở) theo từ khoá; trả về [(đường dẫn, ghi nguồn)]."""
+    # Commons không trả kết quả cho câu dài: thử từ khoá đầy đủ, rồi rút xuống 3 và 2 từ đầu.
+    words = re.sub(r"[^\w\s-]", " ", query).split()
+    pages = {}
+    for q in dict.fromkeys([" ".join(words), " ".join(words[:3]), " ".join(words[:2])]):
+        if not q: continue
+        u = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode({
+            "action": "query", "format": "json", "generator": "search", "gsrsearch": q + " filetype:bitmap",
+            "gsrnamespace": 6, "gsrlimit": 12, "prop": "imageinfo", "iiprop": "url|extmetadata|size", "iiurlwidth": 1200})
+        pages = json.loads(http(u, headers={"User-Agent": BOT_UA})).get("query", {}).get("pages", {})
+        if pages: break
+        time.sleep(1)
+    out = []
+    for p in sorted(pages.values(), key=lambda p: p["index"]):
+        if len(out) >= n: break
         ii = p["imageinfo"][0]; lic = ii["extmetadata"].get("LicenseShortName", {}).get("value", "")
         if ii["width"] < 1000 or not re.search(r"CC|public|PD|No restrictions", lic, re.I): continue
-        time.sleep(4)
-        path = outdir / f"{name}.jpg"
+        if re.search(r"\.(tif|tiff|svg|pdf|djvu)$", p["title"], re.I): continue
+        time.sleep(3)
+        path = outdir / f"{name}_{len(out)}.jpg"
         try: download(ii["thumburl"], path)
         except Exception: continue
-        return path, f"{p['title']} — {lic}"
-    return None
+        out.append((path, f"{p['title']} — {lic}"))
+    return out
+
 
 
 # ---------- 2. Gemini ----------
@@ -149,10 +165,12 @@ def write_story(title, text, cands, alts):
         "QUY TẮC CỨNG:\n"
         "1. Chỉ dùng sự thật có trong bài. Không bịa số liệu, tên, trích dẫn. Không mô tả cảnh máu me.\n"
         "2. ẢNH PHẢI MINH HOẠ ĐÚNG CÂU THOẠI. Lời nói về Washington thì ảnh phải là Washington; nói về chữ ký thì ảnh phải có chữ ký. "
+        "Chỉ viết những câu có thể minh hoạ bằng địa điểm/toà nhà/vật/con vật THẬT chụp được; ý trừu tượng (số liệu, quy trình, "
+        "pháp lý) hãy gắn với một hình đại diện hợp lý (toà nhà chính quyền, hòm phiếu, con vịt, búa quan toà). "
         "Không dùng ảnh chỉ 'có vẻ liên quan'.\n"
         "3. Với mỗi cảnh, nếu một trong các ảnh ứng viên (đánh số IMG0, IMG1...) minh hoạ đúng câu đó thì dùng: \"image\": \"IMGn\". "
         "Ảnh đi kèm bài có thể thuộc 'bài liên quan' và lạc đề: hãy NHÌN ảnh trước khi chọn.\n"
-        "4. Nếu không ảnh nào khớp, đặt \"image\": null và \"query\": từ khoá tiếng Anh ngắn, cụ thể, tả cảnh vật thật "
+        "4. Nếu không ảnh nào khớp, đặt \"image\": null và \"query\": 2-3 TỪ KHOÁ tiếng Anh (không viết thành câu), đúng tên địa danh/vật/con vật thật, ví dụ 'Denver City County Building', 'mallard duck' "
         "(địa danh, vật thể, con vật) để tìm ảnh Wikimedia Commons. Không tìm ảnh người nổi tiếng hay cảnh đau đớn.\n"
         "5. Một ảnh dùng tối đa 1 lần. Cảnh đầu là câu mở đầu hấp dẫn; cảnh cuối chốt lại thông điệp.\n"
         'Trả về JSON: {"title_vi": str, "caption_vi": str (≤2 câu cho bài đăng), "hashtags": [str], '
@@ -163,16 +181,28 @@ def write_story(title, text, cands, alts):
     return gemini(parts)
 
 
-def verify(scenes, paths):
-    """Lượt 2: Gemini rà từng cặp (câu thoại, ảnh); trả về chỉ số các cảnh bị lệch."""
+def choose_image(sentence, cands):
+    """Gemini nhìn các ảnh ứng viên và chọn ảnh khớp nhất với câu thoại; pick=-1 nếu không ảnh nào khớp."""
     parts = [{"text": (
-        "Kiểm tra từng cặp LỜI THOẠI + ẢNH. Ảnh có minh hoạ ĐÚNG ý của lời thoại không (đúng địa điểm/vật thể/con vật/sự việc được nhắc)? "
-        "Ảnh chỉ 'cùng chủ đề chung' thì trả false. Ảnh có chữ chính trị, người nổi tiếng không liên quan, hoặc cảnh đau đớn/máu me thì false.\n"
-        'Trả JSON: {"results": [{"i": số cảnh, "match": true|false, "reason": str}]}')}]
-    for i, (s, p) in enumerate(zip(scenes, paths)):
-        parts += [{"text": f"CẢNH {i}: «{s['text']}»"}, img_part(p)]
-    r = gemini(parts)
-    return [x["i"] for x in r["results"] if not x.get("match")]
+        "Chọn ảnh minh hoạ cho MỘT câu thoại trong video tin tức về động vật/ăn chay.\n"
+        "Ảnh KHỚP khi nó thể hiện đúng ĐỐI TƯỢNG, ĐỊA ĐIỂM hoặc VẬT được nhắc tới (đúng thành phố/toà nhà/con vật/đồ vật), "
+        "hoặc là hình đại diện hợp lý cho ý đó. KHÔNG cần minh hoạ hành động khó chụp (ví dụ quy trình ép ăn): ảnh con vật được nhắc là đủ. "
+        "Ảnh sai địa điểm/sai vật (ví dụ Copenhagen khi nói Washington, sách cổ khi nói ngày tháng), có chữ chính trị, "
+        "người nổi tiếng không liên quan, cảnh đau đớn/máu me, hoặc ẢNH MÓN ĂN LÀM TỪ THỊT/GAN/ĐỘNG VẬT (kênh này ủng hộ động vật) thì KHÔNG khớp.\n"
+        'Trả JSON: {"pick": chỉ số ảnh khớp nhất hoặc -1, "reason": str, "better_query": từ khoá tiếng Anh cụ thể hơn nếu pick=-1, nếu không thì null}\n'
+        f"CÂU THOẠI: «{sentence}»")}]
+    for i, (p, c) in enumerate(cands):
+        parts += [{"text": f"ẢNH {i}:"}, img_part(p)]
+    time.sleep(2)
+    try:
+        r = gemini(parts)
+        r["pick"] = int(r.get("pick", -1))
+        if r["pick"] >= len(cands): r["pick"] = -1
+        return r
+    except SystemExit:
+        raise
+    except Exception:
+        return {"pick": -1, "reason": "lỗi đọc trả lời"}
 
 
 # ---------- main ----------
@@ -200,33 +230,38 @@ def main():
     log(f"{len(cand)} ảnh ứng viên từ bài")
 
     story = json.loads(Path(a.mock).read_text(encoding="utf8")) if a.mock else write_story(title, text, cand, alts)
+    if not a.mock and len(story.get("scenes", [])) < MIN_SCENES + 1:  # Gemini đôi khi viết thiếu cảnh: cho viết lại 1 lần
+        log(f"Gemini mới viết {len(story.get('scenes', []))} cảnh, thử lại")
+        again = write_story(title, text, cand, alts)
+        if len(again.get("scenes", [])) > len(story.get("scenes", [])): story = again
     scenes, paths, credits = story["scenes"], [], []
-    for n in range(2):  # tối đa 1 lần sửa ảnh lệch
-        paths, credits = [], []
-        for i, s in enumerate(scenes):
-            m = re.fullmatch(r"IMG(\d+)", s.get("image") or "")
-            if m and int(m.group(1)) < len(cand) and s.get("image") not in [x.get("image") for x in scenes[:i]]:
-                paths.append(cand[int(m.group(1))][0]); credits.append(f"cảnh {i}: ảnh trong bài")
-            elif s.get("query"):
-                got = commons_search(s["query"], img, f"web{i}")
-                if not got: log(f"cảnh {i}: không tìm được ảnh cho '{s['query']}'"); paths.append(None); credits.append(""); continue
-                paths.append(got[0]); credits.append(f"cảnh {i}: {got[1]}")
-            else: paths.append(None); credits.append("")
-        good = [(s, p, c) for s, p, c in zip(scenes, paths, credits) if p]
-        if len(good) < MIN_SCENES: sys.exit("Không đủ cảnh có ảnh khớp; bỏ bài này.")
-        scenes, paths, credits = [g[0] for g in good], [g[1] for g in good], [g[2] for g in good]
-        if a.mock: break
-        bad = verify(scenes, paths)
-        if not bad: break
-        log("Cảnh lệch ảnh:", bad)
-        if n == 1:  # sau lần sửa vẫn lệch -> bỏ cảnh đó
-            keep = [i for i in range(len(scenes)) if i not in bad]
-            scenes, paths, credits = [scenes[i] for i in keep], [paths[i] for i in keep], [credits[i] for i in keep]
-            if len(scenes) < MIN_SCENES: sys.exit("Quá nhiều cảnh lệch ảnh; bỏ bài này.")
+    final_scenes = []
+    for i, s in enumerate(scenes):
+        sel, query = None, s.get("query")
+        m = re.fullmatch(r"IMG(\d+)", s.get("image") or "")
+        if m and int(m.group(1)) < len(cand):
+            c = [(cand[int(m.group(1))][0], "ảnh trong bài")]
+            r = {"pick": 0} if a.mock else choose_image(s["text"], c)
+            if r.get("pick", -1) == 0:
+                sel = c[0]
+            else:
+                log(f"  cảnh {i}: ảnh trong bài không khớp — {r.get('reason', '')[:120]}")
+                query = query or r.get("better_query")
+        for attempt in range(2):
+            if sel or not query: break
+            cs = commons_candidates(query, img, f"w{i}_{attempt}")
+            if not cs: log(f"  cảnh {i}: không có ảnh cho «{query}»"); break
+            r = {"pick": 0} if a.mock else choose_image(s["text"], cs)
+            if r.get("pick", -1) >= 0:
+                sel = cs[r["pick"]]; log(f"  cảnh {i}: «{query}» -> {sel[1]}"); break
+            log(f"  cảnh {i}: «{query}» không có ảnh khớp — {r.get('reason', '')[:120]}")
+            query = r.get("better_query")
+        if sel:
+            final_scenes.append(s); paths.append(sel[0]); credits.append(f"cảnh {len(paths) - 1}: {sel[1]}")
         else:
-            for i in bad:  # ép tìm ảnh web cho cảnh lệch
-                scenes[i]["image"] = None
-                scenes[i]["query"] = scenes[i].get("query") or " ".join(re.findall(r"[A-Za-z]{4,}", scenes[i]["text"]))[:60] or title
+            log(f"  cảnh {i}: BỎ — «{s['text'][:60]}»")
+    scenes = final_scenes
+    if len(scenes) < MIN_SCENES: sys.exit(f"Chỉ {len(scenes)} cảnh có ảnh khớp (cần ≥{MIN_SCENES}); bỏ bài này.")
     final = {"lang": "vi", "voice": "vi-VN-HoaiMyNeural", "width": 1080, "height": 1920, "source": link,
              "scenes": [{"text": s["text"], "image": str(p.relative_to(out)).replace("\\", "/")} for s, p in zip(scenes, paths)]}
     (out / "story.json").write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf8")
