@@ -4,13 +4,13 @@
     python video/make_video.py video/sample/story.json out.mp4
 
 story.json:
-  {"lang": "vi", "voice": "vi-VN-HoaiMyNeural", "width": 1080, "height": 1920,
+  {"lang": "vi", "width": 1080, "height": 1920,
    "scenes": [{"text": "Câu thoại.", "image": "img/a.jpg"}, ...]}
 
-Giọng: edge-tts (miễn phí, chạy được trên GitHub Actions). Thời lượng mỗi cảnh = độ dài thật của
+Giọng: chỉ VoiceStudio (VOICESTUDIO_*; mặc định giọng nam). Thời lượng mỗi cảnh = độ dài thật của
 câu được đọc, nên ảnh luôn đổi đúng lúc câu thoại chuyển.
 """
-import asyncio, json, os, shutil, subprocess, sys, tempfile, urllib.request
+import json, os, shutil, subprocess, sys, tempfile, urllib.request
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -42,52 +42,40 @@ def duration(path):
     return float(run([FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path]).strip())
 
 
-async def _tts(text, voice, out):
-    import edge_tts
-    await edge_tts.Communicate(text, voice, rate="-4%").save(out)
-
-
 def voicestudio_up(base):
     try:
-        urllib.request.urlopen(base.rsplit("/v1", 1)[0] + "/.well-known/voicestudio-speech", timeout=3)
+        urllib.request.urlopen(base.rsplit("/v1", 1)[0] + "/.well-known/voicestudio-speech", timeout=5)
         return True
     except Exception:
         return False
 
 
-def tts_voicestudio(text, out):
-    """Giọng từ VoiceStudio chạy trên máy (OpenAI-compatible). VOICESTUDIO_VOICE = id/tên giọng đã clone."""
+def tts(text, out):
+    """Giọng chỉ lấy từ VoiceStudio (API OpenAI-compatible), không có giọng dự phòng.
+    VOICESTUDIO_VOICE  = tên/id giọng đã clone trong app (bỏ trống = giọng thiết kế theo VOICESTUDIO_INSTRUCT)
+    VOICESTUDIO_INSTRUCT = thuộc tính thiết kế giọng, mặc định giọng nam trầm trung niên
+    VOICESTUDIO_URL / VOICESTUDIO_MODEL / VOICESTUDIO_API_KEY: chỉ đổi khi cần."""
     base = os.environ.get("VOICESTUDIO_URL", "http://localhost:3900/v1")
-    body = {"model": os.environ.get("VOICESTUDIO_MODEL", "tts-1"), "input": text,
-            "voice": os.environ.get("VOICESTUDIO_VOICE", "default"), "response_format": "mp3"}
+    if not voicestudio_up(base):
+        sys.exit("VoiceStudio chưa chạy ở " + base + ". Mở VoiceStudio (hoặc bật container) rồi chạy lại.")
+    body = {"model": os.environ.get("VOICESTUDIO_MODEL") or "tts-1", "input": text,
+            "voice": os.environ.get("VOICESTUDIO_VOICE") or "default",
+            "instructions": os.environ.get("VOICESTUDIO_INSTRUCT") or "male, middle-aged, low pitch",
+            "response_format": "mp3"}
     headers = {"Content-Type": "application/json"}
     if os.environ.get("VOICESTUDIO_API_KEY"):
         headers["Authorization"] = "Bearer " + os.environ["VOICESTUDIO_API_KEY"]
-    req = urllib.request.Request(base + "/audio/speech", data=json.dumps(body).encode(), headers=headers)
-    Path(out).write_bytes(urllib.request.urlopen(req, timeout=300).read())
-
-
-def tts(text, voice, out):
-    # Có VoiceStudio đang chạy (và không ép edge) thì dùng giọng của nó; không thì edge-tts.
-    if os.environ.get("TTS_ENGINE", "auto") != "edge" and voicestudio_up(os.environ.get("VOICESTUDIO_URL", "http://localhost:3900/v1")):
-        try:
-            tts_voicestudio(text, out)
-            if os.path.getsize(out) > 1000:
-                return
-        except Exception as e:
-            if os.environ.get("TTS_ENGINE") == "voicestudio":
-                sys.exit(f"VoiceStudio lỗi: {e}")
-            print("VoiceStudio lỗi, chuyển sang edge-tts:", e, file=sys.stderr)
-    elif os.environ.get("TTS_ENGINE") == "voicestudio":
-        sys.exit("TTS_ENGINE=voicestudio nhưng VoiceStudio chưa chạy ở " + os.environ.get("VOICESTUDIO_URL", "http://localhost:3900/v1"))
+    err = None
     for attempt in range(3):
         try:
-            asyncio.run(_tts(text, voice, out))
+            req = urllib.request.Request(base + "/audio/speech", data=json.dumps(body).encode(), headers=headers)
+            Path(out).write_bytes(urllib.request.urlopen(req, timeout=600).read())
             if os.path.getsize(out) > 1000:
                 return
-        except Exception as e:  # mạng chập chờn
+            err = "file âm thanh rỗng"
+        except Exception as e:
             err = e
-    sys.exit(f"TTS lỗi: {err}")
+    sys.exit(f"VoiceStudio đọc lỗi: {err}")
 
 
 def font(size):
@@ -175,7 +163,6 @@ def main(story_path, out_path):
     story = json.loads(Path(story_path).read_text(encoding="utf8"))
     base = Path(story_path).parent
     W, H = story.get("width", 1080), story.get("height", 1920)
-    voice = story.get("voice", "vi-VN-HoaiMyNeural")
     with tempfile.TemporaryDirectory() as tmp:
         segs = []
         for i, sc in enumerate(story["scenes"]):
@@ -183,7 +170,7 @@ def main(story_path, out_path):
             if not img.exists():
                 sys.exit(f"Thiếu ảnh cảnh {i + 1}: {img}")
             mp3 = str(Path(tmp) / f"v{i}.mp3")
-            tts(sc["text"], voice, mp3)
+            tts(sc["text"], mp3)
             dur = duration(mp3) + TAIL
             seg = Path(tmp) / f"seg{i}.mp4"
             render_scene(img, mp3, dur, chunks(sc["text"]), W, H, seg, tmp, i)

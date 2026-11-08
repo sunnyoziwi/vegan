@@ -27,13 +27,13 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          pip install --quiet pillow edge-tts
+          pip install --quiet pillow
 
-      - name: Bật VoiceStudio (Docker bản CPU) và thử đọc 1 câu
-        id: voicestudio
-        continue-on-error: true   # hỏng thì dùng edge-tts, video vẫn ra
+      - name: Bật VoiceStudio (Docker bản CPU) và thử đọc 1 câu bằng giọng nam
+        id: voicestudio            # không có giọng dự phòng: hỏng ở đây thì workflow dừng
         env:
           VS_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
+          VS_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
         run: |
           KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
           echo "::add-mask::$KEY"
@@ -47,20 +47,20 @@ jobs:
           done
           curl -sf --max-time 600 http://127.0.0.1:3900/v1/audio/speech \
             -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-            -d "{\"model\":\"tts-1\",\"input\":\"Xin chào, đây là giọng thử.\",\"voice\":\"${VS_VOICE:-default}\",\"response_format\":\"mp3\"}" \
+            -d "{\"model\":\"tts-1\",\"input\":\"Xin chào, đây là giọng thử.\",\"voice\":\"${VS_VOICE:-default}\",\"instructions\":\"${VS_INSTRUCT:-male, middle-aged, low pitch}\",\"response_format\":\"mp3\"}" \
             -o /tmp/probe.mp3
           test "$(stat -c%s /tmp/probe.mp3)" -gt 2000
           echo "VOICESTUDIO_API_KEY=$KEY" >> "$GITHUB_ENV"
-          echo "TTS_ENGINE=voicestudio" >> "$GITHUB_ENV"
 
       - name: Nhật ký VoiceStudio nếu không chạy được
-        if: steps.voicestudio.outcome == 'failure'
-        run: docker logs --tail 60 voicestudio || true
+        if: failure() && steps.voicestudio.outcome == 'failure'
+        run: docker logs --tail 80 voicestudio || true
 
       - name: Làm video (Gemini viết lời + chọn ảnh, giọng đọc, FFmpeg dựng)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VOICESTUDIO_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
+          VOICESTUDIO_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
         run: python video/auto_video.py --out run/video
 
       - name: Lưu danh sách bài đã làm

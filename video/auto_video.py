@@ -262,7 +262,7 @@ def main():
             log(f"  cảnh {i}: BỎ — «{s['text'][:60]}»")
     scenes = final_scenes
     if len(scenes) < MIN_SCENES: sys.exit(f"Chỉ {len(scenes)} cảnh có ảnh khớp (cần ≥{MIN_SCENES}); bỏ bài này.")
-    final = {"lang": "vi", "voice": "vi-VN-HoaiMyNeural", "width": 1080, "height": 1920, "source": link,
+    final = {"lang": "vi", "width": 1080, "height": 1920, "source": link,
              "scenes": [{"text": s["text"], "image": str(p.relative_to(out)).replace("\\", "/")} for s, p in zip(scenes, paths)]}
     (out / "story.json").write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf8")
     (out / "PUBLISH.txt").write_text(
