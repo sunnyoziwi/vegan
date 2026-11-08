@@ -63,6 +63,12 @@ jobs:
           VOICESTUDIO_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
         run: python video/auto_video.py --out run/video --count 2 --state video-facebook
 
+      - name: Đăng video lên Facebook Page (hẹn giờ như flow ảnh)
+        continue-on-error: true      # đăng lỗi thì vẫn lưu state + video trong artifact
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+        run: python video/publish.py --dir run/video --to facebook
+
       - name: Lưu danh sách bài đã làm
         if: always()
         run: |

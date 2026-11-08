@@ -261,6 +261,9 @@ def make_one(title, link, out, mock):
     (out / "PUBLISH.txt").write_text(
         f"{story.get('title_vi', title)}\n\n{story.get('caption_vi', '')}\n\n{' '.join('#' + h.lstrip('#') for h in story.get('hashtags', []))}\n\n"
         f"Nguồn: {link}\n\nẢnh:\n" + "\n".join(credits), encoding="utf8")
+    (out / "publish.json").write_text(json.dumps(
+        {"title": story.get("title_vi", title), "caption": story.get("caption_vi", ""), "hashtags": story.get("hashtags", []), "source": link},
+        ensure_ascii=False, indent=2), encoding="utf8")
     sys.path.insert(0, str(Path(__file__).parent))
     import make_video
     make_video.main(str(out / "story.json"), str(out / "video.mp4"))

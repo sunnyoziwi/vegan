@@ -63,6 +63,15 @@ jobs:
           VOICESTUDIO_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
         run: python video/auto_video.py --out run/video --count 1 --state video-tiktok
 
+      - name: Đăng video lên TikTok (hộp nháp như flow ảnh)
+        continue-on-error: true      # đăng lỗi thì vẫn lưu state + video trong artifact
+        env:
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+          TIKTOK_POST_MODE: inbox
+        run: python video/publish.py --dir run/video --to tiktok
+
       - name: Lưu danh sách bài đã làm
         if: always()
         run: |
