@@ -1,0 +1,15 @@
+{
+  "lang": "vi",
+  "voice": "vi-VN-HoaiMyNeural",
+  "width": 1080,
+  "height": 1920,
+  "source": "https://sentientmedia.org/denver-and-d-c-have-voted-to-ban-foie-gras/",
+  "scenes": [
+    {"text": "Cử tri thủ đô Washington và thành phố Denver của Mỹ vừa bỏ phiếu cấm foie gras.", "image": "img/ballot.jpg"},
+    {"text": "Ở Washington, 73 phần trăm cử tri nói đồng ý.", "image": "img/capitol.jpg"},
+    {"text": "Ở Denver, con số là 66,55 phần trăm.", "image": "img/denver.jpg"},
+    {"text": "Cả hai đề xuất đều đến từ kiến nghị của người dân. Ở Denver, tình nguyện viên đã nộp hơn 16 nghìn chữ ký ngay trước tòa thị chính.", "image": "img/hero.jpg"},
+    {"text": "Foie gras được làm từ gan của vịt hoặc ngỗng bị vỗ béo, bằng cách ép ăn qua một ống đưa xuống cổ họng.", "image": "img/duck.jpg"},
+    {"text": "Lệnh cấm có hiệu lực từ ngày 1 tháng 7 năm 2027, trừ khi tòa án chặn lại. Một nhà sản xuất ở New York nói họ đã làm việc với luật sư.", "image": "img/gavel.jpg"}
+  ]
+}

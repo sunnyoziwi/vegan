@@ -15,3 +15,8 @@ youtube/post*/
 youtube/work/
 youtube/automation/logs/
 youtube/automation/LAST_STATUS.txt
+
+# video dựng ra trên máy (nặng) — workflow Actions lưu thành artifact
+*.mp4
+voicestudio/
+__pycache__/
