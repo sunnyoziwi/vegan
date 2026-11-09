@@ -1,0 +1,83 @@
+name: Video daily
+
+on:
+  # Keep this off until a test run works and the server's "Vegan Daily Video" task is disabled.
+  # Both writing postN to the same Drive folder would overwrite each other's videos.
+  # schedule:
+  #   - cron: '0 18 * * *'   # 01:00 Vietnam time
+  #   - cron: '0 2 * * *'    # 09:00 Vietnam time
+  #   - cron: '0 10 * * *'   # 17:00 Vietnam time
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Test run: upload to the _test folder on Drive'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write           # only the last step uses it, to remove a finished topic
+
+concurrency:
+  group: video-daily
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      TEST_RUN: ${{ inputs.test && 'true' || 'false' }}
+    steps:
+      # No stored git credentials: the step running Claude must not be able to push.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg rclone libnss3 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libgbm1 libasound2t64 libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 \
+            libpango-1.0-0 libcairo2 > /dev/null
+          pip install --quiet pillow numpy kokoro-onnx soundfile
+          npm install --global --silent @anthropic-ai/claude-code
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/kokoro-onnx
+          key: kokoro-onnx-v1
+
+      - name: Get skill and past episodes from Drive
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        run: bash video/run_video.sh prepare
+
+      - name: Make the video
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: bash video/run_video.sh make
+
+      - name: Upload the video to Drive
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        run: bash video/run_video.sh publish
+
+      - name: Upload the private run log to Drive
+        if: always()
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        run: bash video/run_video.sh logs
+
+      - name: Remove the finished topic
+        if: ${{ !inputs.test }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash video/run_video.sh finish_topic
