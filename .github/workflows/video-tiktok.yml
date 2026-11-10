@@ -6,7 +6,8 @@ on:
   workflow_dispatch:        # nút "Run workflow" để chạy tay
 
 permissions:
-  contents: write           # để commit state/video-tiktok.json
+  contents: write           # để commit state/video-tiktok.json + state/video-tiktok-retry.json
+  actions: read             # để tải artifact video của lần chạy trước khi cần gửi bù
 
 concurrency:
   group: video-tiktok
@@ -22,6 +23,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # Video bị TikTok từ chối lần trước (vd hộp nháp đầy) được ghi trong state/video-tiktok-retry.json:
+      # tải lại từ artifact của lần chạy đó (giữ 7 ngày) và gửi trước, tối đa 2 video / lần.
+      # Đặt trước bước làm video để vẫn gửi bù được khi hôm nay làm video bị lỗi.
+      - name: Gửi bù video TikTok bị lỗi lần trước
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+          TIKTOK_POST_MODE: inbox
+        run: python video/publish.py --to tiktok --retry --retry-state state/video-tiktok-retry.json --dir run/retry
 
       - name: Cài FFmpeg, font và thư viện
         run: |
@@ -70,13 +84,14 @@ jobs:
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
           TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
           TIKTOK_POST_MODE: inbox
-        run: python video/publish.py --dir run/video --to tiktok
+        run: python video/publish.py --dir run/video --to tiktok --retry-state state/video-tiktok-retry.json --run-id ${{ github.run_id }}
 
       - name: Lưu danh sách bài đã làm
         if: always()
         run: |
-          test -f state/video-tiktok.json || exit 0
-          git add state/video-tiktok.json
+          for f in state/video-tiktok.json state/video-tiktok-retry.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           git diff --cached --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

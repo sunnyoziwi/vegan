@@ -3,10 +3,12 @@
 
     python video/publish.py --dir run/video --to facebook   # cần FB_PAGE_TOKEN (+ FB_PAGE_ID)
     python video/publish.py --dir run/video --to tiktok     # cần TIKTOK_CLIENT_KEY/SECRET/REFRESH_TOKEN
+    python video/publish.py --to tiktok --retry --retry-state state/video-tiktok-retry.json   # gửi bù (cần GH_TOKEN)
 
 Cách đăng giống hai flow ảnh cũ: Facebook hẹn giờ trải đều trong khung giờ của ngày kế tiếp;
 TikTok gửi vào hộp nháp (TIKTOK_POST_MODE=inbox) hoặc đăng thẳng (direct).
 Lỗi đăng không làm hỏng workflow: video vẫn nằm trong artifact để đăng tay.
+TikTok lỗi (vd hộp nháp đầy) + --retry-state: video được ghi lại, lần chạy sau tải artifact về và gửi bù.
 """
 import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import datetime, timedelta
@@ -96,62 +98,152 @@ def to_facebook(vids):
 
 
 # ---------- TikTok ----------
-def to_tiktok(vids):
+def tiktok_token():
     ck, cs, rt = (os.environ.get(k, "") for k in ("TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_REFRESH_TOKEN"))
-    if not (ck and cs and rt): log("Thiếu TIKTOK_CLIENT_KEY/SECRET/REFRESH_TOKEN: bỏ qua đăng TikTok"); return 0
+    if not (ck and cs and rt): log("Thiếu TIKTOK_CLIENT_KEY/SECRET/REFRESH_TOKEN: bỏ qua đăng TikTok"); return None
     st, body = call("https://open.tiktokapis.com/v2/oauth/token/", urllib.parse.urlencode(
         {"client_key": ck, "client_secret": cs, "grant_type": "refresh_token", "refresh_token": rt}).encode(),
         {"Content-Type": "application/x-www-form-urlencoded"}, "POST")
     tok = json.loads(body).get("access_token") if st < 300 else None
-    if not tok: log("TikTok refresh token lỗi:", body[:300]); return 0
+    if not tok: log("TikTok refresh token lỗi:", body[:300])
+    return tok
+
+
+def tiktok_send(tok, path, meta):
+    """Gửi 1 video. Trả về (True, trạng thái) hoặc (False, lỗi)."""
     direct = os.environ.get("TIKTOK_POST_MODE", "inbox").lower() == "direct"
     auth = {"Authorization": "Bearer " + tok}
-    ok = 0
+    size = path.stat().st_size
+    chunk = size if size <= 64 * 1024 * 1024 else 32 * 1024 * 1024
+    total = -(-size // chunk)
+    desc = message(meta)[:2200]
+    if direct:
+        ep = "/v2/post/publish/video/init/"
+        info = {"post_info": {"title": desc, "privacy_level": os.environ.get("TIKTOK_PRIVACY", "SELF_ONLY"),
+                              "disable_comment": False}}
+    else:
+        ep = "/v2/post/publish/inbox/video/init/"
+        info = {}
+    init = {**info, "source_info": {"source": "FILE_UPLOAD", "video_size": size, "chunk_size": chunk, "total_chunk_count": total}}
+    st, r = jcall("https://open.tiktokapis.com" + ep, init, auth)
+    data = r.get("data") or {}
+    if st >= 300 or not data.get("upload_url"):
+        return False, f"khởi tạo HTTP {st} {json.dumps(r.get('error') or r, ensure_ascii=False)[:300]}"
+    raw = path.read_bytes()
+    for i in range(total):
+        a, b = i * chunk, min(size, (i + 1) * chunk) - 1
+        st, resp = call(data["upload_url"], raw[a:b + 1], {"Content-Type": "video/mp4", "Content-Length": str(b - a + 1),
+                        "Content-Range": f"bytes {a}-{b}/{size}"}, "PUT", 600)
+        if st >= 300: return False, f"tải lên HTTP {st} {resp[:200]}"
+    status = "PROCESSING_UPLOAD"
+    for _ in range(15):
+        time.sleep(4)
+        st, r = jcall("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {"publish_id": data["publish_id"]}, auth)
+        status = (r.get("data") or {}).get("status", status)
+        if status in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE", "FAILED"): break
+    if status in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
+        return True, status + (" (vào hộp nháp TikTok)" if status == "SEND_TO_USER_INBOX" else "")
+    return False, f"{status} {(r.get('data') or {}).get('fail_reason', '')}".strip()
+
+
+def to_tiktok(vids, retry_file=None, run_id=""):
+    """Gửi các video mới. Video lỗi được ghi vào retry_file để lần chạy sau gửi bù (--retry)."""
+    tok = tiktok_token()
+    ok, failed = 0, []
     for path, meta in vids:
-        size = path.stat().st_size
-        chunk = size if size <= 64 * 1024 * 1024 else 32 * 1024 * 1024
-        total = -(-size // chunk)
-        title = (meta.get("title") or "")[:90]
-        desc = message(meta)[:2200]
-        if direct:
-            ep = "/v2/post/publish/video/init/"
-            info = {"post_info": {"title": desc, "privacy_level": os.environ.get("TIKTOK_PRIVACY", "SELF_ONLY"),
-                                  "disable_comment": False}}
-        else:
-            ep = "/v2/post/publish/inbox/video/init/"
-            info = {}
-        init = {**info, "source_info": {"source": "FILE_UPLOAD", "video_size": size, "chunk_size": chunk, "total_chunk_count": total}}
-        st, r = jcall("https://open.tiktokapis.com" + ep, init, auth)
-        data = r.get("data") or {}
-        if st >= 300 or not data.get("upload_url"):
-            log(f"TikTok LỖI khởi tạo {path.parent.name}: HTTP {st} {json.dumps(r.get('error') or r, ensure_ascii=False)[:300]}"); continue
-        raw = path.read_bytes(); good = True
-        for i in range(total):
-            a, b = i * chunk, min(size, (i + 1) * chunk) - 1
-            st, resp = call(data["upload_url"], raw[a:b + 1], {"Content-Type": "video/mp4", "Content-Length": str(b - a + 1),
-                            "Content-Range": f"bytes {a}-{b}/{size}"}, "PUT", 600)
-            if st >= 300: log(f"TikTok LỖI tải lên {path.parent.name}: HTTP {st} {resp[:200]}"); good = False; break
-        if not good: continue
-        status = "PROCESSING_UPLOAD"
-        for _ in range(15):
-            time.sleep(4)
-            st, r = jcall("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {"publish_id": data["publish_id"]}, auth)
-            status = (r.get("data") or {}).get("status", status)
-            if status in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE", "FAILED"): break
-        if status in ("SEND_TO_USER_INBOX", "PUBLISH_COMPLETE"):
-            ok += 1; log(f"TikTok: {path.parent.name} — {status}" + (" (vào hộp nháp TikTok)" if status == "SEND_TO_USER_INBOX" else ""))
-        else:
-            log(f"TikTok LỖI {path.parent.name}: {status} {(r.get('data') or {}).get('fail_reason', '')}")
+        good, msg = tiktok_send(tok, path, meta) if tok else (False, "không lấy được token TikTok")
+        if good: ok += 1; log(f"TikTok: {path.parent.name} — {msg}")
+        else: failed.append((path, meta, msg)); log(f"TikTok LỖI {path.parent.name}: {msg}")
+    if retry_file and run_id and failed:
+        state = load_retry(retry_file)
+        for path, meta, msg in failed:
+            state["pending"][f"{run_id}/{path.parent.name}"] = {
+                "run": run_id, "folder": path.parent.name, "title": (meta.get("title") or "")[:90],
+                "since": int(time.time()), "attempts": 1, "last": msg[:300]}
+        save_retry(retry_file, state)
+        log(f"Đã ghi {len(failed)} video lỗi vào {retry_file}: lần chạy sau gửi bù")
     return ok
+
+
+# ---------- Gửi bù TikTok ----------
+# Video nằm trong artifact "video-tiktok-<run_id>" (giữ 7 ngày), nên chỉ gửi bù trong RETRY_DAYS ngày.
+RETRY_DAYS = 6
+RETRY_MAX_ATTEMPTS = 6
+RETRY_PER_RUN = 2  # hộp nháp TikTok chỉ nhận ~5 bài chờ / 24 giờ: không gửi dồn
+
+
+def load_retry(f):
+    p = Path(f)
+    s = json.loads(p.read_text(encoding="utf8")) if p.exists() else {}
+    s.setdefault("pending", {}); s.setdefault("done", {})
+    return s
+
+
+def save_retry(f, s):
+    cutoff = time.time() - 30 * 86400  # chỉ giữ lịch sử 30 ngày
+    s["done"] = {k: v for k, v in s["done"].items() if v.get("at", 0) >= cutoff}
+    Path(f).parent.mkdir(parents=True, exist_ok=True)
+    Path(f).write_text(json.dumps(s, indent=2, ensure_ascii=False) + "\n", encoding="utf8")
+
+
+def download_artifact(run_id, dest):
+    """Tải artifact video-tiktok-<run_id> bằng gh CLI (có sẵn trên runner, cần GH_TOKEN)."""
+    import subprocess
+    dest.mkdir(parents=True, exist_ok=True)
+    try:
+        r = subprocess.run(["gh", "run", "download", str(run_id), "-n", f"video-tiktok-{run_id}", "-D", str(dest)],
+                           capture_output=True, text=True)
+    except FileNotFoundError:
+        log("Không có gh CLI để tải artifact"); return False
+    if r.returncode: log(f"Không tải được artifact video-tiktok-{run_id}: {(r.stderr or r.stdout).strip()[:300]}")
+    return r.returncode == 0
+
+
+def retry_tiktok(retry_file, work):
+    state = load_retry(retry_file)
+    pend = state["pending"]
+    if not pend: log("Không có video TikTok nào cần gửi bù"); return
+    now = time.time()
+    for k, v in list(pend.items()):
+        if now - v.get("since", now) > RETRY_DAYS * 86400 or v.get("attempts", 0) >= RETRY_MAX_ATTEMPTS:
+            log(f"Bỏ gửi bù {k} sau {v.get('attempts')} lần (artifact sắp hết hạn hoặc lỗi mãi): {v.get('last', '')}")
+            state["done"][k] = {**v, "at": int(now), "result": "bỏ: " + v.get("last", "")}
+            del pend[k]
+    todo = sorted(pend.items(), key=lambda kv: kv[1].get("since", 0))[:RETRY_PER_RUN]
+    tok = tiktok_token() if todo else None
+    for k, v in todo:
+        d = Path(work) / str(v["run"])
+        if not (d / v["folder"] / "video.mp4").exists() and not download_artifact(v["run"], d):
+            v["attempts"] += 1; v["last"] = "không tải được artifact"; continue
+        path, meta_f = d / v["folder"] / "video.mp4", d / v["folder"] / "publish.json"
+        if not path.exists() or not meta_f.exists():
+            log(f"Artifact {v['run']} không có {v['folder']}/video.mp4: bỏ")
+            state["done"][k] = {**v, "at": int(now), "result": "bỏ: artifact không có video"}; del pend[k]; continue
+        good, msg = tiktok_send(tok, path, json.loads(meta_f.read_text(encoding="utf8"))) if tok else (False, "không lấy được token TikTok")
+        if good:
+            log(f"TikTok gửi bù: {k} — {msg}")
+            state["done"][k] = {**v, "at": int(time.time()), "result": msg}; del pend[k]
+        else:
+            v["attempts"] += 1; v["last"] = msg[:300]
+            log(f"TikTok gửi bù LỖI {k} (lần {v['attempts']}): {msg}")
+    save_retry(retry_file, state)
+    if pend: log(f"Còn {len(pend)} video chờ gửi bù ở lần chạy sau")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", required=True); ap.add_argument("--to", required=True, choices=["facebook", "tiktok"])
+    ap.add_argument("--dir"); ap.add_argument("--to", required=True, choices=["facebook", "tiktok"])
+    ap.add_argument("--retry-state", help="file JSON ghi video TikTok lỗi để gửi bù (vd state/video-tiktok-retry.json)")
+    ap.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
+    ap.add_argument("--retry", action="store_true", help="chỉ gửi bù các video TikTok lỗi ở lần chạy trước")
     a = ap.parse_args()
+    if a.retry:
+        if a.to != "tiktok" or not a.retry_state: ap.error("--retry cần --to tiktok và --retry-state")
+        retry_tiktok(a.retry_state, a.dir or "run/retry"); return
+    if not a.dir: ap.error("cần --dir")
     vids = videos(a.dir)
     if not vids: log("Không có video nào để đăng"); return
-    n = (to_facebook if a.to == "facebook" else to_tiktok)(vids)
+    n = to_facebook(vids) if a.to == "facebook" else to_tiktok(vids, a.retry_state, a.run_id)
     log(f"Đã đăng {n}/{len(vids)} video lên {a.to}")
 
 
