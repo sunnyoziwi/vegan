@@ -19,7 +19,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Còn bài ảnh bị TikTok từ chối đang chờ gửi bù (queue.json của vegan-legal) thì hôm nay không làm bài mới:
+      # workflow "Publish due TikTok posts" vẫn gửi bù 3 giờ / lần. Không đọc được queue.json thì làm bài mới như thường.
+      - name: Có bài ảnh đang chờ gửi bù không?
+        id: backlog
+        env:
+          GH_PAGES_TOKEN: ${{ secrets.GH_PAGES_TOKEN }}
+        run: |
+          auth=(); [ -n "$GH_PAGES_TOKEN" ] && auth=(-H "Authorization: Bearer $GH_PAGES_TOKEN")
+          n=$(curl -sf "${auth[@]}" -H "Accept: application/vnd.github.raw" \
+                https://api.github.com/repos/sunnyoziwi/vegan-legal/contents/queue.json \
+              | jq '[.[] | select(.retry == true and .status == "queued")] | length' 2>/dev/null || echo 0)
+          echo "Bài ảnh chờ gửi bù: ${n:-0}"
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "backfill=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Còn $n bài ảnh chờ gửi bù trên TikTok: hôm nay không làm bài mới"
+          fi
+
       - name: Chạy workflow n8n
+        if: steps.backlog.outputs.backfill != 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # đẩy ảnh lên repo vegan-legal (GitHub Pages) + xếp lịch TikTok vào queue.json;

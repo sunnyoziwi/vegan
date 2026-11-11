@@ -199,6 +199,13 @@ def download_artifact(run_id, dest):
     return r.returncode == 0
 
 
+def set_output(name, value):
+    """Ghi output cho bước GitHub Actions (steps.<id>.outputs.<name>)."""
+    f = os.environ.get("GITHUB_OUTPUT")
+    if f:
+        with open(f, "a", encoding="utf8") as fh: fh.write(f"{name}={value}\n")
+
+
 def retry_tiktok(retry_file, work):
     state = load_retry(retry_file)
     pend = state["pending"]
@@ -210,6 +217,7 @@ def retry_tiktok(retry_file, work):
             state["done"][k] = {**v, "at": int(now), "result": "bỏ: " + v.get("last", "")}
             del pend[k]
     todo = sorted(pend.items(), key=lambda kv: kv[1].get("since", 0))[:RETRY_PER_RUN]
+    if todo: set_output("backfill", "true")  # lượt này gửi bù thì không làm video mới
     tok = tiktok_token() if todo else None
     for k, v in todo:
         d = Path(work) / str(v["run"])

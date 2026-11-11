@@ -26,8 +26,9 @@ jobs:
 
       # Video bị TikTok từ chối lần trước (vd hộp nháp đầy) được ghi trong state/video-tiktok-retry.json:
       # tải lại từ artifact của lần chạy đó (giữ 7 ngày) và gửi trước, tối đa 2 video / lần.
-      # Đặt trước bước làm video để vẫn gửi bù được khi hôm nay làm video bị lỗi.
+      # Có video cần gửi bù thì lượt này CHỈ gửi bù, không làm video mới (để hộp nháp không bị dồn).
       - name: Gửi bù video TikTok bị lỗi lần trước
+        id: retry
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -38,6 +39,7 @@ jobs:
         run: python video/publish.py --to tiktok --retry --retry-state state/video-tiktok-retry.json --dir run/retry
 
       - name: Cài FFmpeg, font và thư viện
+        if: steps.retry.outputs.backfill != 'true'   # lượt này đã gửi bù: không làm video mới
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
@@ -45,6 +47,7 @@ jobs:
 
       - name: Bật VoiceStudio (Docker bản CPU) và thử đọc 1 câu bằng giọng nam
         id: voicestudio            # không có giọng dự phòng: hỏng ở đây thì workflow dừng
+        if: steps.retry.outputs.backfill != 'true'   # lượt này đã gửi bù: không làm video mới
         env:
           VS_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
           VS_INSTRUCT: ${{ vars.VOICESTUDIO_INSTRUCT }}
@@ -71,6 +74,7 @@ jobs:
         run: docker logs --tail 80 voicestudio || true
 
       - name: Làm video (Gemini viết lời + chọn ảnh, giọng đọc, FFmpeg dựng)
+        if: steps.retry.outputs.backfill != 'true'   # lượt này đã gửi bù: không làm video mới
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VOICESTUDIO_VOICE: ${{ vars.VOICESTUDIO_VOICE }}
@@ -79,6 +83,7 @@ jobs:
 
       - name: Đăng video lên TikTok (hộp nháp như flow ảnh)
         continue-on-error: true      # đăng lỗi thì vẫn lưu state + video trong artifact
+        if: steps.retry.outputs.backfill != 'true'   # lượt này đã gửi bù: không làm video mới
         env:
           TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
